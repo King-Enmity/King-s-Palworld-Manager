@@ -1,15 +1,41 @@
-import { buildApp } from "./app.js";
-import { loadAppConfig } from "./config/app-config.js";
-import { openDatabase } from "./database/database.js";
-import { AuditRepository } from "./infrastructure/audit-repository.js";
-import { PalworldDiscoveryService } from "./modules/palworld/discovery-service.js";
-import { PalworldRuntimeState } from "./modules/palworld/runtime-state.js";
-import { SystemService } from "./modules/system/system-service.js";
+import {
+  buildApp
+} from "./app.js";
+
+import {
+  loadAppConfig
+} from "./config/app-config.js";
+
+import {
+  openDatabase
+} from "./database/database.js";
+
+import {
+  AuditRepository
+} from "./infrastructure/audit-repository.js";
+
+import {
+  PalworldDiscoveryService
+} from "./modules/palworld/discovery-service.js";
+
+import {
+  PalworldRuntimeState
+} from "./modules/palworld/runtime-state.js";
+
+import {
+  PalworldSettingsService
+} from "./modules/palworld/settings-service.js";
+
+import {
+  SystemService
+} from "./modules/system/system-service.js";
 
 async function main(): Promise<void> {
-  const managerStartedAt = new Date();
+  const managerStartedAt =
+    new Date();
 
-  const config = loadAppConfig();
+  const config =
+    loadAppConfig();
 
   const database =
     openDatabase(
@@ -17,13 +43,20 @@ async function main(): Promise<void> {
     );
 
   const audit =
-    new AuditRepository(database);
+    new AuditRepository(
+      database
+    );
 
   const palworldRuntime =
     new PalworldRuntimeState();
 
   const palworldDiscovery =
     new PalworldDiscoveryService(
+      config
+    );
+
+  const palworldSettings =
+    new PalworldSettingsService(
       config
     );
 
@@ -35,12 +68,14 @@ async function main(): Promise<void> {
       managerStartedAt
     });
 
-  const app = buildApp({
-    config,
-    database,
-    systemService,
-    palworldDiscovery
-  });
+  const app =
+    buildApp({
+      config,
+      database,
+      systemService,
+      palworldDiscovery,
+      palworldSettings
+    });
 
   audit.record({
     category: "manager",
@@ -79,17 +114,22 @@ async function main(): Promise<void> {
 
   process.once(
     "SIGINT",
-    () => void shutdown("SIGINT")
+    () =>
+      void shutdown("SIGINT")
   );
 
   process.once(
     "SIGTERM",
-    () => void shutdown("SIGTERM")
+    () =>
+      void shutdown("SIGTERM")
   );
 
   await app.listen({
-    host: config.bindAddress,
-    port: config.httpPort
+    host:
+      config.bindAddress,
+
+    port:
+      config.httpPort
   });
 
   audit.record({
@@ -97,20 +137,24 @@ async function main(): Promise<void> {
     action: "listening",
     message:
       "Manager HTTP API is listening.",
+
     metadata: {
       bindAddress:
         config.bindAddress,
+
       port:
         config.httpPort
     }
   });
 }
 
-main().catch((error: unknown) => {
-  console.error(
-    "King's Palworld Manager failed to start.",
-    error
-  );
+main().catch(
+  (error: unknown) => {
+    console.error(
+      "King's Palworld Manager failed to start.",
+      error
+    );
 
-  process.exitCode = 1;
-});
+    process.exitCode = 1;
+  }
+);
