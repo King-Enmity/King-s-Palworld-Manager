@@ -41,6 +41,10 @@ import {
   type PalworldSettingsWriter
 } from "./modules/palworld/settings-writer.js";
 
+import type {
+  SaveExportService
+} from "./modules/saves/save-export-service.js";
+
 import {
   registerSaveRoutes
 } from "./modules/saves/save-routes.js";
@@ -121,6 +125,9 @@ export interface AppDependencies {
 
   saveInventory:
     SaveInventoryService;
+
+  saveExports:
+    SaveExportService;
 }
 
 export function buildApp(
@@ -197,7 +204,8 @@ export function buildApp(
 
   registerSaveRoutes(
     app,
-    dependencies.saveInventory
+    dependencies.saveInventory,
+    dependencies.saveExports
   );
 
   app.get(
