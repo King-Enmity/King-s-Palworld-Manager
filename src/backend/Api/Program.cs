@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,11 +12,13 @@ builder.Services.AddHttpClient("steam", client =>
 
 var app = builder.Build();
 app.UseExceptionHandler();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "ok",
-    service = "kpm-api",
+    service = "kpm-manager",
     utc = DateTimeOffset.UtcNow
 }));
 
@@ -28,13 +29,15 @@ api.MapGet("/system/overview", () => Results.Ok(new
     product = "King's Palworld Manager",
     version = "0.1.0-dev",
     edition = "self-hosted",
+    runtime = "single-image",
+    persistence = "sqlite-planned",
     authentication = "disabled-v1",
     modules = new[] { "dashboard", "server", "scheduler", "webhooks", "wiki", "steam-metadata" }
 }));
 
 api.MapGet("/steam/metadata", async (IHttpClientFactory factory, IConfiguration config, CancellationToken cancellationToken) =>
 {
-    var rawAppId = config["Steam:AppId"] ?? "1623730";
+    var rawAppId = config["Steam:AppId"] ?? config["KPM_STEAM_APP_ID"] ?? "1623730";
     if (!int.TryParse(rawAppId, out var appId) || appId <= 0)
     {
         return Results.Problem("Steam App ID configuration is invalid.", statusCode: 500);
@@ -94,5 +97,7 @@ api.MapGet("/steam/metadata", async (IHttpClientFactory factory, IConfiguration 
         fetchedAtUtc = DateTimeOffset.UtcNow
     });
 });
+
+app.MapFallbackToFile("index.html");
 
 app.Run();
