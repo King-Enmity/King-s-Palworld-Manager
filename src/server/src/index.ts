@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import { loadAppConfig } from "./config/app-config.js";
 import { openDatabase } from "./database/database.js";
 import { AuditRepository } from "./infrastructure/audit-repository.js";
+import { PalworldDiscoveryService } from "./modules/palworld/discovery-service.js";
 import { PalworldRuntimeState } from "./modules/palworld/runtime-state.js";
 import { SystemService } from "./modules/system/system-service.js";
 
@@ -10,32 +11,42 @@ async function main(): Promise<void> {
 
   const config = loadAppConfig();
 
-  const database = openDatabase(
-    config.databasePath
-  );
+  const database =
+    openDatabase(
+      config.databasePath
+    );
 
-  const audit = new AuditRepository(database);
+  const audit =
+    new AuditRepository(database);
 
   const palworldRuntime =
     new PalworldRuntimeState();
 
-  const systemService = new SystemService({
-    config,
-    audit,
-    palworldRuntime,
-    managerStartedAt
-  });
+  const palworldDiscovery =
+    new PalworldDiscoveryService(
+      config
+    );
+
+  const systemService =
+    new SystemService({
+      config,
+      audit,
+      palworldRuntime,
+      managerStartedAt
+    });
 
   const app = buildApp({
     config,
     database,
-    systemService
+    systemService,
+    palworldDiscovery
   });
 
   audit.record({
     category: "manager",
     action: "started",
-    message: "King's Palworld Manager started."
+    message:
+      "King's Palworld Manager started."
   });
 
   let shuttingDown = false;
@@ -57,7 +68,8 @@ async function main(): Promise<void> {
     audit.record({
       category: "manager",
       action: "stopping",
-      message: `Manager stopping after ${signal}.`
+      message:
+        `Manager stopping after ${signal}.`
     });
 
     await app.close();
@@ -83,10 +95,13 @@ async function main(): Promise<void> {
   audit.record({
     category: "manager",
     action: "listening",
-    message: "Manager HTTP API is listening.",
+    message:
+      "Manager HTTP API is listening.",
     metadata: {
-      bindAddress: config.bindAddress,
-      port: config.httpPort
+      bindAddress:
+        config.bindAddress,
+      port:
+        config.httpPort
     }
   });
 }

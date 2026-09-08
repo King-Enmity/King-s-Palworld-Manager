@@ -9,12 +9,18 @@ import {
   databaseIsReady,
   type KpmDatabase
 } from "./database/database.js";
+import type { PalworldDiscoveryService } from "./modules/palworld/discovery-service.js";
 import type { SystemService } from "./modules/system/system-service.js";
 
 export interface AppDependencies {
   config: Readonly<AppConfig>;
+
   database: KpmDatabase;
+
   systemService: SystemService;
+
+  palworldDiscovery:
+    PalworldDiscoveryService;
 }
 
 export function buildApp(
@@ -34,9 +40,10 @@ export function buildApp(
   });
 
   app.get("/ready", async (_request, reply) => {
-    const ready = databaseIsReady(
-      dependencies.database
-    );
+    const ready =
+      databaseIsReady(
+        dependencies.database
+      );
 
     if (!ready) {
       return reply.code(503).send({
@@ -53,9 +60,23 @@ export function buildApp(
     };
   });
 
-  app.get("/api/v1/system", async () => {
-    return dependencies.systemService.overview();
-  });
+  app.get(
+    "/api/v1/system",
+    async () => {
+      return dependencies
+        .systemService
+        .overview();
+    }
+  );
+
+  app.get(
+    "/api/v1/palworld/discovery",
+    async () => {
+      return dependencies
+        .palworldDiscovery
+        .snapshot();
+    }
+  );
 
   return app;
 }

@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 dist/
 coverage/
 
@@ -6,15 +6,15 @@ coverage/
 .env.*
 !.env.example
 
-data/
-backups/
-imports/
-exports/
-logs/
+/data/
+/backups/
+/imports/
+/exports/
+/logs/
 
-palworld/
-Saved/
-worlds/
+/palworld/
+/Saved/
+/worlds/
 
 *.db
 *.db-shm
