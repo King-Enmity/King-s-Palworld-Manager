@@ -37,6 +37,10 @@ import {
   SavesPage
 } from "./SavesPage";
 
+import {
+  SettingsPage
+} from "./SettingsPage";
+
 type Health =
   | "offline"
   | "transitioning"
@@ -1272,7 +1276,12 @@ export default function App() {
                         }
                       />
                     )
-                  : renderPlaceholder()
+                  : page ===
+                      "Settings"
+                    ? (
+                        <SettingsPage />
+                      )
+                    : renderPlaceholder()
         }
       </main>
     </div>
