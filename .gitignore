@@ -27,3 +27,4 @@ coverage/
 .DS_Store
 Thumbs.db
 Desktop.ini
+/src/server/data/
