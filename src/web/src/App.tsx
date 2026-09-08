@@ -25,6 +25,10 @@ import {
   type ComponentType
 } from "react";
 
+import {
+  ServerPage
+} from "./ServerPage";
+
 type Health =
   | "offline"
   | "transitioning"
@@ -1226,7 +1230,17 @@ export default function App() {
           page ===
             "Overview"
             ? renderOverview()
-            : renderPlaceholder()
+            : page ===
+                "Server"
+              ? (
+                  <ServerPage
+                    apiError={apiError}
+                    live={live}
+                    loading={loading}
+                    onRefresh={loadLive}
+                  />
+                )
+              : renderPlaceholder()
         }
       </main>
     </div>
