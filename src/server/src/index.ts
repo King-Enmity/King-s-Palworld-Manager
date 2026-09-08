@@ -1,31 +1,101 @@
-﻿import Fastify from "fastify";
+import { buildApp } from "./app.js";
+import { loadAppConfig } from "./config/app-config.js";
+import { openDatabase } from "./database/database.js";
+import { AuditRepository } from "./infrastructure/audit-repository.js";
+import { PalworldRuntimeState } from "./modules/palworld/runtime-state.js";
+import { SystemService } from "./modules/system/system-service.js";
 
-const app = Fastify({
-  logger: true
-});
+async function main(): Promise<void> {
+  const managerStartedAt = new Date();
 
-app.get("/health", async () => {
-  return {
-    status: "ok",
-    product: "King's Palworld Manager",
-    version: "0.1.0-dev",
-    timestamp: new Date().toISOString()
+  const config = loadAppConfig();
+
+  const database = openDatabase(
+    config.databasePath
+  );
+
+  const audit = new AuditRepository(database);
+
+  const palworldRuntime =
+    new PalworldRuntimeState();
+
+  const systemService = new SystemService({
+    config,
+    audit,
+    palworldRuntime,
+    managerStartedAt
+  });
+
+  const app = buildApp({
+    config,
+    database,
+    systemService
+  });
+
+  audit.record({
+    category: "manager",
+    action: "started",
+    message: "King's Palworld Manager started."
+  });
+
+  let shuttingDown = false;
+
+  const shutdown = async (
+    signal: string
+  ): Promise<void> => {
+    if (shuttingDown) {
+      return;
+    }
+
+    shuttingDown = true;
+
+    app.log.info(
+      { signal },
+      "Manager shutdown requested."
+    );
+
+    audit.record({
+      category: "manager",
+      action: "stopping",
+      message: `Manager stopping after ${signal}.`
+    });
+
+    await app.close();
+
+    database.close();
   };
-});
 
-app.get("/api/v1/system", async () => {
-  return {
-    product: "King's Palworld Manager",
-    edition: "self-hosted",
-    version: "0.1.0-dev",
-    authentication: false
-  };
-});
+  process.once(
+    "SIGINT",
+    () => void shutdown("SIGINT")
+  );
 
-const port = Number(process.env.KPM_HTTP_PORT ?? 8080);
-const host = process.env.KPM_BIND_ADDRESS ?? "127.0.0.1";
+  process.once(
+    "SIGTERM",
+    () => void shutdown("SIGTERM")
+  );
 
-await app.listen({
-  port,
-  host
+  await app.listen({
+    host: config.bindAddress,
+    port: config.httpPort
+  });
+
+  audit.record({
+    category: "manager",
+    action: "listening",
+    message: "Manager HTTP API is listening.",
+    metadata: {
+      bindAddress: config.bindAddress,
+      port: config.httpPort
+    }
+  });
+}
+
+main().catch((error: unknown) => {
+  console.error(
+    "King's Palworld Manager failed to start.",
+    error
+  );
+
+  process.exitCode = 1;
 });
