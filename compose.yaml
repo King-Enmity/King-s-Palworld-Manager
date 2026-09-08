@@ -1,118 +1,34 @@
 name: kings-palworld-manager
 
 services:
-  gateway:
-    image: caddy:2.10-alpine
+  kings-palworld-manager:
+    image: ghcr.io/king-enmity/kings-palworld-manager:${KPM_IMAGE_TAG:-latest}
+    container_name: kings-palworld-manager
     restart: unless-stopped
+    stop_grace_period: 60s
+
     ports:
       - "${KPM_BIND_ADDRESS:-127.0.0.1}:${KPM_HTTP_PORT:-8080}:8080/tcp"
-    volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-    depends_on:
-      api:
-        condition: service_healthy
-      web:
-        condition: service_started
-    networks: [edge]
-    read_only: true
-    tmpfs: [/data, /config]
-    security_opt: [no-new-privileges:true]
-    cap_drop: [ALL]
-
-  web:
-    build:
-      context: ./src/web
-    restart: unless-stopped
-    networks: [edge]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
-    cap_drop: [ALL]
-
-  api:
-    build:
-      context: ./src/backend
-      dockerfile: Api/Dockerfile
-    restart: unless-stopped
-    environment:
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__Main: Host=db;Port=5432;Database=${KPM_DB_NAME};Username=${KPM_DB_USER};Password=${KPM_DB_PASSWORD}
-      Palworld__BaseUrl: http://palworld:8212/v1/api/
-      Palworld__Username: ${KPM_PALWORLD_REST_USER}
-      Palworld__Password: ${KPM_PALWORLD_REST_PASSWORD}
-      Steam__AppId: ${KPM_STEAM_APP_ID:-1623730}
-    depends_on:
-      db:
-        condition: service_healthy
-    networks: [edge, app, palworld-private]
-    healthcheck:
-      test: [CMD, wget, --spider, -q, http://127.0.0.1:8080/health]
-      interval: 15s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
-    cap_drop: [ALL]
-
-  worker:
-    build:
-      context: ./src/backend
-      dockerfile: Worker/Dockerfile
-    restart: unless-stopped
-    environment:
-      ConnectionStrings__Main: Host=db;Port=5432;Database=${KPM_DB_NAME};Username=${KPM_DB_USER};Password=${KPM_DB_PASSWORD}
-      Palworld__BaseUrl: http://palworld:8212/v1/api/
-      Palworld__Username: ${KPM_PALWORLD_REST_USER}
-      Palworld__Password: ${KPM_PALWORLD_REST_PASSWORD}
-      Steam__AppId: ${KPM_STEAM_APP_ID:-1623730}
-    depends_on:
-      db:
-        condition: service_healthy
-    networks: [app, palworld-private]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
-    cap_drop: [ALL]
-
-  db:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${KPM_DB_NAME}
-      POSTGRES_USER: ${KPM_DB_USER}
-      POSTGRES_PASSWORD: ${KPM_DB_PASSWORD}
-    volumes:
-      - kpm-db:/var/lib/postgresql/data
-    networks: [app]
-    healthcheck:
-      test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    security_opt: [no-new-privileges:true]
-
-  palworld:
-    image: ghcr.io/pocketpairjp/palserver:${KPM_PALWORLD_IMAGE_TAG:-v1.0.3.101283}
-    restart: unless-stopped
-    command:
-      - -port=8211
-      - -logformat=json
-    ports:
       - "${KPM_PALWORLD_PUBLIC_PORT:-8211}:8211/udp"
-    volumes:
-      - palworld-saved:/pal/Package/Pal/Saved
-    networks: [palworld-private]
-    security_opt: [no-new-privileges:true]
+      - "${KPM_PALWORLD_QUERY_PORT:-27015}:27015/udp"
 
-networks:
-  edge:
-  app:
-    internal: true
-  palworld-private:
-    internal: true
+    environment:
+      TZ: ${TZ:-UTC}
+      KPM_SERVER_NAME: ${KPM_SERVER_NAME:-King's Palworld Server}
+      KPM_SERVER_PASSWORD: ${KPM_SERVER_PASSWORD:-}
+      KPM_ADMIN_PASSWORD: ${KPM_ADMIN_PASSWORD}
+      KPM_MAX_PLAYERS: ${KPM_MAX_PLAYERS:-16}
+      KPM_COMMUNITY: ${KPM_COMMUNITY:-false}
+      KPM_CROSSPLAY_PLATFORMS: ${KPM_CROSSPLAY_PLATFORMS:-(Steam,Xbox,PS5,Mac)}
+      KPM_STEAM_APP_ID: ${KPM_STEAM_APP_ID:-1623730}
+
+    volumes:
+      - manager-data:/manager/data
+      - palworld-saved:/pal/Package/Pal/Saved
+
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
-  kpm-db:
+  manager-data:
   palworld-saved:
