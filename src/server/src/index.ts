@@ -66,6 +66,10 @@ import {
   SystemService
 } from "./modules/system/system-service.js";
 
+import {
+  SteamMetadataService
+} from "./modules/steam/steam-metadata-service.js";
+
 async function main():
   Promise<void> {
   const managerStartedAt =
@@ -169,6 +173,11 @@ async function main():
       audit
     );
 
+  const steamMetadata =
+    new SteamMetadataService(
+      config
+    );
+
   const systemService =
     new SystemService({
       config,
@@ -193,7 +202,9 @@ async function main():
 
       saveInventory,
       saveExports,
-      saveImports
+      saveImports,
+
+      steamMetadata
     });
 
   audit.record({

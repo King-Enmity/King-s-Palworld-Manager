@@ -63,6 +63,14 @@ import type {
   SystemService
 } from "./modules/system/system-service.js";
 
+import {
+  registerSteamRoutes
+} from "./modules/steam/steam-routes.js";
+
+import type {
+  SteamMetadataService
+} from "./modules/steam/steam-metadata-service.js";
+
 const SettingValueSchema =
   z.union([
     z.string()
@@ -137,6 +145,9 @@ export interface AppDependencies {
 
   saveImports:
     SaveImportService;
+
+  steamMetadata:
+    SteamMetadataService;
 }
 
 export function buildApp(
@@ -240,6 +251,11 @@ export function buildApp(
     dependencies.saveInventory,
     dependencies.saveExports,
     dependencies.saveImports
+  );
+
+  registerSteamRoutes(
+    app,
+    dependencies.steamMetadata
   );
 
   app.get(

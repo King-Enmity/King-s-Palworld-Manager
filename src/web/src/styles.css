@@ -2472,3 +2472,257 @@ td strong {
     grid-template-columns: 1fr;
   }
 }
+.app-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-shell-branded::before {
+  position: fixed;
+  z-index: -2;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    var(
+      --palworld-page-art,
+      none
+    );
+  background-position: center;
+  background-size: cover;
+  background-attachment: fixed;
+  opacity: 0.075;
+  filter:
+    saturate(0.9)
+    contrast(1.08);
+  content: "";
+}
+
+.app-shell-branded::after {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(7, 11, 20, 0.96),
+      rgba(7, 11, 20, 0.84) 45%,
+      rgba(7, 11, 20, 0.9)
+    );
+  content: "";
+}
+
+.server-hero::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    var(
+      --palworld-hero-art,
+      none
+    );
+  background-position: center;
+  background-size: cover;
+  opacity: 0.34;
+  filter:
+    saturate(1.05)
+    contrast(1.05);
+  content: "";
+}
+
+.server-hero::before {
+  z-index: 1;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 14, 26, 0.95) 0%,
+      rgba(8, 14, 26, 0.82) 42%,
+      rgba(8, 14, 26, 0.48) 72%,
+      rgba(8, 14, 26, 0.62) 100%
+    );
+}
+
+.server-hero-copy,
+.hero-state {
+  z-index: 2;
+}
+
+.steam-brand-chip {
+  border-color:
+    rgba(
+      84,
+      154,
+      255,
+      0.28
+    ) !important;
+
+  color:
+    #9fc5ff !important;
+}
+
+.brand-game-caption {
+  margin-top: 3px !important;
+  color: #7187b5 !important;
+  font-size: 9px !important;
+  font-weight: 650;
+}
+
+@media (max-width: 760px) {
+  .app-shell-branded::before {
+    opacity: 0.05;
+    background-attachment: scroll;
+  }
+
+  .server-hero::after {
+    opacity: 0.25;
+  }
+}
+.sidebar {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-branded::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background-image:
+    var(
+      --palworld-sidebar-art,
+      none
+    );
+  background-position: 52% center;
+  background-size: auto 100%;
+  background-repeat: no-repeat;
+  opacity: 0.24;
+  filter:
+    saturate(1.08)
+    contrast(1.08);
+}
+
+.sidebar-branded::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(
+      180deg,
+      rgba(5, 10, 20, 0.56) 0%,
+      rgba(5, 10, 20, 0.68) 22%,
+      rgba(5, 10, 20, 0.76) 58%,
+      rgba(5, 10, 20, 0.86) 100%
+    );
+}
+
+.sidebar > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-branded .brand {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(101, 133, 255, 0.18);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(18, 28, 58, 0.84),
+      rgba(11, 18, 36, 0.88)
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.sidebar-branded .brand::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background-image:
+    var(
+      --palworld-brand-art,
+      var(--palworld-sidebar-art, none)
+    );
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  filter:
+    saturate(1.08)
+    contrast(1.05);
+}
+
+.sidebar-branded .brand::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(
+      135deg,
+      rgba(10, 18, 40, 0.36) 0%,
+      rgba(10, 18, 40, 0.62) 100%
+    );
+}
+
+.sidebar-branded .brand > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-branded .brand-mark {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 10px 24px rgba(93, 121, 255, 0.24);
+}
+
+.sidebar-branded .brand-game-caption {
+  color: #8aa9df !important;
+}
+
+.sidebar-branded .nav-item,
+.sidebar-branded .navigation button,
+.sidebar-branded .navigation a {
+  backdrop-filter: blur(8px);
+}
+
+.sidebar-branded .nav-item.is-active,
+.sidebar-branded .navigation .is-active,
+.sidebar-branded .navigation button[aria-current="page"] {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(77, 104, 221, 0.20),
+      rgba(44, 60, 122, 0.28)
+    );
+  border-color:
+    rgba(111, 142, 255, 0.22);
+}
+
+.sidebar-branded .sidebar-footer {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(7, 12, 24, 0.32),
+      rgba(7, 12, 24, 0.76)
+    );
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 980px) {
+  .sidebar-branded::before {
+    opacity: 0.10;
+  }
+
+  .sidebar-branded .brand::before {
+    opacity: 0.14;
+  }
+}

@@ -22,7 +22,8 @@ import {
   useCallback,
   useEffect,
   useState,
-  type ComponentType
+  type ComponentType,
+  type CSSProperties
 } from "react";
 
 import {
@@ -99,6 +100,33 @@ interface LiveError {
   source: string;
   code: string;
   message: string;
+}
+
+interface SteamBrandingMetadata {
+  appId: number;
+
+  name: string;
+  shortDescription: string;
+
+  developers: string[];
+  publishers: string[];
+
+  fetchedAt: string | null;
+
+  source:
+    | "live"
+    | "cache"
+    | "unavailable";
+
+  stale: boolean;
+
+  assets: {
+    header: string | null;
+    capsule: string | null;
+    background: string | null;
+  };
+
+  errors: string[];
 }
 
 interface LiveSnapshot {
@@ -350,6 +378,18 @@ export default function App() {
       null
     );
 
+
+  const [
+    branding,
+    setBranding
+  ] =
+    useState<
+      SteamBrandingMetadata |
+      null
+    >(
+      null
+    );
+
   const loadLive =
     useCallback(
       async () => {
@@ -409,6 +449,53 @@ export default function App() {
 
   useEffect(
     () => {
+      let cancelled =
+        false;
+
+      void (
+        async () => {
+          try {
+            const response =
+              await fetch(
+                "/api/v1/steam/palworld",
+                {
+                  headers: {
+                    Accept:
+                      "application/json"
+                  }
+                }
+              );
+
+            if (!response.ok) {
+              return;
+            }
+
+            const payload =
+              await response
+                .json() as
+                  SteamBrandingMetadata;
+
+            if (!cancelled) {
+              setBranding(
+                payload
+              );
+            }
+          } catch {
+            // Branding is optional. The normal Manager theme remains usable.
+          }
+        }
+      )();
+
+      return () => {
+        cancelled =
+          true;
+      };
+    },
+    []
+  );
+
+  useEffect(
+    () => {
       void loadLive();
 
       const timer =
@@ -439,6 +526,51 @@ export default function App() {
     live?.info
       ?.servername ??
     "Palworld Server";
+
+
+  const shellStyle:
+    CSSProperties |
+    undefined =
+      branding?.assets
+        .background
+        ? ({
+            "--palworld-page-art":
+              `url("${branding.assets.background}")`
+          } as CSSProperties)
+        : undefined;
+
+  const heroStyle:
+    CSSProperties |
+    undefined = (
+      branding?.assets
+        .background ||
+      branding?.assets
+        .header
+    )
+      ? ({
+          "--palworld-hero-art":
+            `url("${branding.assets.background ?? branding.assets.header}")`
+        } as CSSProperties)
+      : undefined;
+
+  const sidebarStyle:
+    CSSProperties |
+    undefined = (
+      branding?.assets
+        .capsule ||
+      branding?.assets
+        .header ||
+      branding?.assets
+        .background
+    )
+      ? ({
+          "--palworld-sidebar-art":
+            `url("${branding.assets.background ?? branding.assets.header ?? branding.assets.capsule}")`,
+
+          "--palworld-brand-art":
+            `url("${branding.assets.header ?? branding.assets.capsule ?? branding.assets.background}")`
+        } as CSSProperties)
+      : undefined;
 
   const renderOverview =
     () => (
@@ -549,7 +681,10 @@ export default function App() {
             : null
         }
 
-        <section className="server-hero">
+        <section
+          className="server-hero"
+          style={heroStyle}
+        >
           <div className="server-hero-copy">
             <p className="eyebrow">
               KING'S PALWORLD MANAGER
@@ -624,6 +759,17 @@ export default function App() {
 
                 Manager API
               </span>
+
+
+              {
+                branding
+                  ? (
+                      <span className="steam-brand-chip">
+                        Steam App {branding.appId}
+                      </span>
+                    )
+                  : null
+              }
             </div>
           </div>
 
@@ -1155,8 +1301,23 @@ export default function App() {
     );
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div
+      className={
+        branding?.assets
+          .background
+          ? "app-shell app-shell-branded"
+          : "app-shell"
+      }
+      style={shellStyle}
+    >
+      <aside
+        className={
+          branding
+            ? "sidebar sidebar-branded"
+            : "sidebar"
+        }
+        style={sidebarStyle}
+      >
         <div className="brand">
           <div className="brand-mark">
             K
@@ -1170,6 +1331,17 @@ export default function App() {
             <span>
               Palworld Manager
             </span>
+
+
+            {
+              branding
+                ? (
+                    <span className="brand-game-caption">
+                      {branding.name} · Steam
+                    </span>
+                  )
+                : null
+            }
           </div>
         </div>
 
