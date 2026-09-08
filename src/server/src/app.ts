@@ -24,6 +24,14 @@ import {
   type PalworldLifecycleService
 } from "./modules/palworld/lifecycle-service.js";
 
+import {
+  registerPalworldRestRoutes
+} from "./modules/palworld/rest-routes.js";
+
+import type {
+  PalworldRestService
+} from "./modules/palworld/rest-service.js";
+
 import type {
   PalworldSettingsService
 } from "./modules/palworld/settings-service.js";
@@ -93,6 +101,9 @@ export interface AppDependencies {
 
   palworldLifecycle:
     PalworldLifecycleService;
+
+  palworldRest:
+    PalworldRestService;
 
   palworldSettings:
     PalworldSettingsService;
@@ -201,6 +212,7 @@ export function buildApp(
     async (
       action:
         () => Promise<unknown>,
+
       reply:
         {
           code:
@@ -288,6 +300,11 @@ export function buildApp(
 
         reply
       )
+  );
+
+  registerPalworldRestRoutes(
+    app,
+    dependencies.palworldRest
   );
 
   app.get(

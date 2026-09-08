@@ -55,6 +55,19 @@ const EnvironmentSchema = z.object({
       .max(65535)
       .default(8212),
 
+  KPM_PALWORLD_REST_USERNAME:
+    z.string()
+      .regex(/^[^:\r\n]{1,128}$/)
+      .default("admin"),
+
+  KPM_PALWORLD_REST_TIMEOUT_MS:
+    z.coerce
+      .number()
+      .int()
+      .min(250)
+      .max(30000)
+      .default(5000),
+
   KPM_PALWORLD_STOP_TIMEOUT_MS:
     z.coerce
       .number()
@@ -76,6 +89,9 @@ export interface AppConfig {
   palworldGamePort: number;
   palworldQueryPort: number;
   palworldRestPort: number;
+
+  palworldRestUsername: string;
+  palworldRestTimeoutMs: number;
 
   palworldStopTimeoutMs: number;
 }
@@ -128,6 +144,12 @@ export function loadAppConfig(
 
     palworldRestPort:
       parsed.KPM_PALWORLD_REST_PORT,
+
+    palworldRestUsername:
+      parsed.KPM_PALWORLD_REST_USERNAME,
+
+    palworldRestTimeoutMs:
+      parsed.KPM_PALWORLD_REST_TIMEOUT_MS,
 
     palworldStopTimeoutMs:
       parsed.KPM_PALWORLD_STOP_TIMEOUT_MS

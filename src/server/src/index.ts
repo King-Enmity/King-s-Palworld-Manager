@@ -27,6 +27,18 @@ import {
 } from "./modules/palworld/lifecycle-service.js";
 
 import {
+  PalworldRestClient
+} from "./modules/palworld/rest-client.js";
+
+import {
+  PalworldRestConfigurationProvider
+} from "./modules/palworld/rest-configuration.js";
+
+import {
+  PalworldRestService
+} from "./modules/palworld/rest-service.js";
+
+import {
   PalworldRuntimeState
 } from "./modules/palworld/runtime-state.js";
 
@@ -99,6 +111,23 @@ async function main():
   palworldLifecycle
     .initialize();
 
+  const palworldRestConfiguration =
+    new PalworldRestConfigurationProvider(
+      config
+    );
+
+  const palworldRestClient =
+    new PalworldRestClient(
+      palworldRestConfiguration,
+      config.palworldRestTimeoutMs
+    );
+
+  const palworldRest =
+    new PalworldRestService(
+      palworldRestClient,
+      audit
+    );
+
   const systemService =
     new SystemService({
       config,
@@ -116,6 +145,7 @@ async function main():
 
       palworldDiscovery,
       palworldLifecycle,
+      palworldRest,
 
       palworldSettings,
       palworldSettingsWriter
