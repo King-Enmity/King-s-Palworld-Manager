@@ -1,4 +1,5 @@
 import {
+  BellRing,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -80,6 +81,49 @@ interface SchedulerJob {
     null;
 }
 
+interface WebhookDestinationSummary {
+  id: string;
+
+  name: string;
+
+  kind:
+    "discord" |
+    "generic";
+
+  enabled:
+    boolean;
+
+  urlHint:
+    string;
+}
+
+type SchedulerNotificationRequest =
+  | {
+      destinationId:
+        string;
+
+      phase:
+        "before";
+
+      minutesBefore:
+        number;
+
+      messageTemplate:
+        string;
+    }
+  | {
+      destinationId:
+        string;
+
+      phase:
+        "start" |
+        "success" |
+        "failure";
+
+      messageTemplate:
+        string;
+    };
+
 interface Notice {
   type:
     "success" |
@@ -113,6 +157,27 @@ const actionLabels:
     settings:
       "Settings change"
   };
+
+const beforeMinuteOptions = [
+  5,
+  15,
+  30,
+  60
+] as const;
+
+const defaultNotificationTemplates = {
+  before:
+    "⚠️ {{event.name}} is scheduled in {{minutes_before}} minutes ({{event.action}}).",
+
+  start:
+    "▶️ {{event.name}} is starting now ({{event.action}}).",
+
+  success:
+    "✅ {{event.name}} completed successfully.",
+
+  failure:
+    "❌ {{event.name}} failed: {{error}}"
+};
 
 const weekDays = [
   "Sun",
@@ -529,6 +594,98 @@ export function CalendarPage() {
 }`
     );
 
+  const [
+    webhookDestinations,
+    setWebhookDestinations
+  ] =
+    useState<
+      WebhookDestinationSummary[]
+    >(
+      []
+    );
+
+  const [
+    selectedDestinationIds,
+    setSelectedDestinationIds
+  ] =
+    useState<
+      string[]
+    >(
+      []
+    );
+
+  const [
+    beforeMinutes,
+    setBeforeMinutes
+  ] =
+    useState<
+      number[]
+    >(
+      [
+        15
+      ]
+    );
+
+  const [
+    notifyStart,
+    setNotifyStart
+  ] =
+    useState(
+      true
+    );
+
+  const [
+    notifySuccess,
+    setNotifySuccess
+  ] =
+    useState(
+      true
+    );
+
+  const [
+    notifyFailure,
+    setNotifyFailure
+  ] =
+    useState(
+      true
+    );
+
+  const [
+    beforeTemplate,
+    setBeforeTemplate
+  ] =
+    useState(
+      defaultNotificationTemplates
+        .before
+    );
+
+  const [
+    startTemplate,
+    setStartTemplate
+  ] =
+    useState(
+      defaultNotificationTemplates
+        .start
+    );
+
+  const [
+    successTemplate,
+    setSuccessTemplate
+  ] =
+    useState(
+      defaultNotificationTemplates
+        .success
+    );
+
+  const [
+    failureTemplate,
+    setFailureTemplate
+  ] =
+    useState(
+      defaultNotificationTemplates
+        .failure
+    );
+
   const load =
     useCallback(
       async () => {
@@ -537,32 +694,78 @@ export function CalendarPage() {
         );
 
         try {
-          const response =
-            await fetch(
-              "/api/v1/scheduler/jobs",
-              {
-                headers: {
-                  Accept:
-                    "application/json"
+          const [
+            jobsResponse,
+            destinationsResponse
+          ] =
+            await Promise.all([
+              fetch(
+                "/api/v1/scheduler/jobs",
+                {
+                  headers: {
+                    Accept:
+                      "application/json"
+                  }
                 }
-              }
-            );
+              ),
 
-          if (!response.ok) {
+              fetch(
+                "/api/v1/webhooks/destinations",
+                {
+                  headers: {
+                    Accept:
+                      "application/json"
+                  }
+                }
+              )
+            ]);
+
+          if (!jobsResponse.ok) {
             throw new Error(
               await responseMessage(
-                response
+                jobsResponse
               )
             );
           }
 
-          const payload =
-            await response
+          if (!destinationsResponse.ok) {
+            throw new Error(
+              await responseMessage(
+                destinationsResponse
+              )
+            );
+          }
+
+          const jobsPayload =
+            await jobsResponse
               .json() as
                 SchedulerJob[];
 
+          const destinationsPayload =
+            await destinationsResponse
+              .json() as
+                WebhookDestinationSummary[];
+
           setJobs(
-            payload
+            jobsPayload
+          );
+
+          setWebhookDestinations(
+            destinationsPayload
+          );
+
+          setSelectedDestinationIds(
+            current =>
+              current.filter(
+                id =>
+                  destinationsPayload
+                    .some(
+                      destination =>
+                        destination.id ===
+                          id &&
+                        destination.enabled
+                    )
+              )
           );
 
           setError(
@@ -645,6 +848,270 @@ export function CalendarPage() {
         });
 
         return;
+      }
+
+      const selectedDestinations =
+        webhookDestinations
+          .filter(
+            destination =>
+              destination.enabled &&
+              selectedDestinationIds
+                .includes(
+                  destination.id
+                )
+          );
+
+      if (
+        selectedDestinations.length !==
+        selectedDestinationIds.length
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            "One or more selected webhook destinations are disabled or no longer available."
+        });
+
+        return;
+      }
+
+      const notificationRequests:
+        SchedulerNotificationRequest[] =
+          [];
+
+      if (
+        selectedDestinations.length >
+        0
+      ) {
+        const validateTemplate =
+          (
+            label:
+              string,
+
+            value:
+              string
+          ): string | null => {
+            const trimmed =
+              value.trim();
+
+            if (!trimmed) {
+              return `${label} notification template cannot be empty.`;
+            }
+
+            if (
+              trimmed.length >
+              2000
+            ) {
+              return `${label} notification template cannot exceed 2000 characters.`;
+            }
+
+            return null;
+          };
+
+        if (
+          beforeMinutes.length >
+          0
+        ) {
+          const issue =
+            validateTemplate(
+              "Before-event",
+              beforeTemplate
+            );
+
+          if (issue) {
+            setNotice({
+              type:
+                "error",
+
+              message:
+                issue
+            });
+
+            return;
+          }
+
+          const invalidLead =
+            beforeMinutes
+              .find(
+                minutes =>
+                  scheduledDate
+                    .getTime() -
+                    minutes *
+                    60_000 <=
+                  Date.now()
+              );
+
+          if (
+            invalidLead !==
+            undefined
+          ) {
+            setNotice({
+              type:
+                "error",
+
+              message:
+                `The ${invalidLead}-minute warning time has already passed. Move the event later or choose a smaller warning interval.`
+            });
+
+            return;
+          }
+        }
+
+        if (notifyStart) {
+          const issue =
+            validateTemplate(
+              "Start",
+              startTemplate
+            );
+
+          if (issue) {
+            setNotice({
+              type:
+                "error",
+
+              message:
+                issue
+            });
+
+            return;
+          }
+        }
+
+        if (notifySuccess) {
+          const issue =
+            validateTemplate(
+              "Success",
+              successTemplate
+            );
+
+          if (issue) {
+            setNotice({
+              type:
+                "error",
+
+              message:
+                issue
+            });
+
+            return;
+          }
+        }
+
+        if (notifyFailure) {
+          const issue =
+            validateTemplate(
+              "Failure",
+              failureTemplate
+            );
+
+          if (issue) {
+            setNotice({
+              type:
+                "error",
+
+              message:
+                issue
+            });
+
+            return;
+          }
+        }
+
+        for (
+          const destination
+          of selectedDestinations
+        ) {
+          for (
+            const minutes
+            of [
+              ...beforeMinutes
+            ].sort(
+              (
+                left,
+                right
+              ) =>
+                right -
+                left
+            )
+          ) {
+            notificationRequests
+              .push({
+                destinationId:
+                  destination.id,
+
+                phase:
+                  "before",
+
+                minutesBefore:
+                  minutes,
+
+                messageTemplate:
+                  beforeTemplate
+                    .trim()
+              });
+          }
+
+          if (notifyStart) {
+            notificationRequests
+              .push({
+                destinationId:
+                  destination.id,
+
+                phase:
+                  "start",
+
+                messageTemplate:
+                  startTemplate
+                    .trim()
+              });
+          }
+
+          if (notifySuccess) {
+            notificationRequests
+              .push({
+                destinationId:
+                  destination.id,
+
+                phase:
+                  "success",
+
+                messageTemplate:
+                  successTemplate
+                    .trim()
+              });
+          }
+
+          if (notifyFailure) {
+            notificationRequests
+              .push({
+                destinationId:
+                  destination.id,
+
+                phase:
+                  "failure",
+
+                messageTemplate:
+                  failureTemplate
+                    .trim()
+              });
+          }
+        }
+
+        if (
+          notificationRequests.length >
+          32
+        ) {
+          setNotice({
+            type:
+              "error",
+
+            message:
+              "This event would create more than 32 notifications. Reduce destinations or notification phases."
+          });
+
+          return;
+        }
       }
 
       let payload:
@@ -762,6 +1229,69 @@ export function CalendarPage() {
           );
         }
 
+        const createdJob =
+          await response
+            .json() as
+              SchedulerJob;
+
+        if (
+          notificationRequests.length >
+          0
+        ) {
+          const notificationResponse =
+            await fetch(
+              `/api/v1/scheduler/jobs/${createdJob.id}/notifications`,
+              {
+                method:
+                  "PUT",
+
+                headers: {
+                  Accept:
+                    "application/json",
+
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    notifications:
+                      notificationRequests
+                  })
+              }
+            );
+
+          if (
+            !notificationResponse.ok
+          ) {
+            const notificationError =
+              await responseMessage(
+                notificationResponse
+              );
+
+            const rollbackResponse =
+              await fetch(
+                `/api/v1/scheduler/jobs/${createdJob.id}`,
+                {
+                  method:
+                    "DELETE"
+                }
+              );
+
+            if (
+              !rollbackResponse.ok
+            ) {
+              throw new Error(
+                `The event was created, but community notification setup failed: ${notificationError}. Automatic rollback also failed; review "${createdJob.name}" in Calendar.`
+              );
+            }
+
+            throw new Error(
+              `Community notification setup failed: ${notificationError}. The scheduled event was rolled back.`
+            );
+          }
+        }
+
         setName(
           ""
         );
@@ -784,7 +1314,10 @@ export function CalendarPage() {
             "success",
 
           message:
-            "Scheduled event created."
+            notificationRequests.length >
+              0
+              ? `Scheduled event created with ${notificationRequests.length} community notification${notificationRequests.length === 1 ? "" : "s"}.`
+              : "Scheduled event created."
         });
 
         await load();
@@ -1716,6 +2249,468 @@ export function CalendarPage() {
                 )
               : null
           }
+
+          <div className="calendar-notification-panel">
+            <div className="calendar-notification-heading">
+              <div className="calendar-notification-icon">
+                <BellRing
+                  size={17}
+                />
+              </div>
+
+              <div>
+                <strong>
+                  Community notifications
+                </strong>
+
+                <span>
+                  Send scheduled updates through Webhooks.
+                </span>
+              </div>
+            </div>
+
+            {
+              webhookDestinations.length ===
+                0
+                ? (
+                    <div className="calendar-notification-empty">
+                      No webhook destinations are configured. Add one from the Webhooks page to enable community notifications.
+                    </div>
+                  )
+                : (
+                    <>
+                      <div className="calendar-notification-section">
+                        <span className="calendar-notification-label">
+                          Destinations
+                        </span>
+
+                        <div className="calendar-destination-list">
+                          {
+                            webhookDestinations.map(
+                              destination => (
+                                <label
+                                  className={
+                                    destination.enabled
+                                      ? "calendar-destination-option"
+                                      : "calendar-destination-option calendar-destination-disabled"
+                                  }
+                                  key={
+                                    destination.id
+                                  }
+                                >
+                                  <input
+                                    checked={
+                                      selectedDestinationIds
+                                        .includes(
+                                          destination.id
+                                        )
+                                    }
+                                    disabled={
+                                      busy !==
+                                        null ||
+                                      !destination.enabled
+                                    }
+                                    onChange={() => {
+                                      setSelectedDestinationIds(
+                                        current =>
+                                          current.includes(
+                                            destination.id
+                                          )
+                                            ? current.filter(
+                                                id =>
+                                                  id !==
+                                                  destination.id
+                                              )
+                                            : [
+                                                ...current,
+                                                destination.id
+                                              ]
+                                      );
+                                    }}
+                                    type="checkbox"
+                                  />
+
+                                  <div>
+                                    <strong>
+                                      {
+                                        destination.name
+                                      }
+                                    </strong>
+
+                                    <span>
+                                      {
+                                        destination.kind ===
+                                          "discord"
+                                          ? "Discord"
+                                          : "Generic HTTPS"
+                                      }
+                                      {" · "}
+                                      {
+                                        destination.urlHint
+                                      }
+                                      {
+                                        destination.enabled
+                                          ? ""
+                                          : " · disabled"
+                                      }
+                                    </span>
+                                  </div>
+                                </label>
+                              )
+                            )
+                          }
+                        </div>
+                      </div>
+
+                      {
+                        selectedDestinationIds.length >
+                          0
+                          ? (
+                              <>
+                                <div className="calendar-notification-section">
+                                  <span className="calendar-notification-label">
+                                    Before event
+                                  </span>
+
+                                  <div className="calendar-lead-options">
+                                    {
+                                      beforeMinuteOptions.map(
+                                        minutes => (
+                                          <label
+                                            className={
+                                              beforeMinutes.includes(
+                                                minutes
+                                              )
+                                                ? "calendar-lead-option calendar-lead-selected"
+                                                : "calendar-lead-option"
+                                            }
+                                            key={
+                                              minutes
+                                            }
+                                          >
+                                            <input
+                                              checked={
+                                                beforeMinutes.includes(
+                                                  minutes
+                                                )
+                                              }
+                                              disabled={
+                                                busy !==
+                                                null
+                                              }
+                                              onChange={() => {
+                                                setBeforeMinutes(
+                                                  current =>
+                                                    current.includes(
+                                                      minutes
+                                                    )
+                                                      ? current.filter(
+                                                          value =>
+                                                            value !==
+                                                            minutes
+                                                        )
+                                                      : [
+                                                          ...current,
+                                                          minutes
+                                                        ]
+                                                );
+                                              }}
+                                              type="checkbox"
+                                            />
+
+                                            {
+                                              minutes
+                                            } min
+                                          </label>
+                                        )
+                                      )
+                                    }
+                                  </div>
+
+                                  {
+                                    beforeMinutes.length >
+                                      0
+                                      ? (
+                                          <textarea
+                                            className="calendar-notification-template"
+                                            disabled={
+                                              busy !==
+                                              null
+                                            }
+                                            maxLength={2000}
+                                            onChange={
+                                              event =>
+                                                setBeforeTemplate(
+                                                  event.target
+                                                    .value
+                                                )
+                                            }
+                                            rows={3}
+                                            value={
+                                              beforeTemplate
+                                            }
+                                          />
+                                        )
+                                      : null
+                                  }
+                                </div>
+
+                                <div className="calendar-notification-phase">
+                                  <label className="calendar-notification-toggle">
+                                    <input
+                                      checked={
+                                        notifyStart
+                                      }
+                                      disabled={
+                                        busy !==
+                                        null
+                                      }
+                                      onChange={
+                                        event =>
+                                          setNotifyStart(
+                                            event.target
+                                              .checked
+                                          )
+                                      }
+                                      type="checkbox"
+                                    />
+
+                                    <div>
+                                      <strong>
+                                        When action starts
+                                      </strong>
+
+                                      <span>
+                                        Sent when the scheduler begins executing the Palworld action.
+                                      </span>
+                                    </div>
+                                  </label>
+
+                                  {
+                                    notifyStart
+                                      ? (
+                                          <textarea
+                                            className="calendar-notification-template"
+                                            disabled={
+                                              busy !==
+                                              null
+                                            }
+                                            maxLength={2000}
+                                            onChange={
+                                              event =>
+                                                setStartTemplate(
+                                                  event.target
+                                                    .value
+                                                )
+                                            }
+                                            rows={3}
+                                            value={
+                                              startTemplate
+                                            }
+                                          />
+                                        )
+                                      : null
+                                  }
+                                </div>
+
+                                <div className="calendar-notification-phase">
+                                  <label className="calendar-notification-toggle">
+                                    <input
+                                      checked={
+                                        notifySuccess
+                                      }
+                                      disabled={
+                                        busy !==
+                                        null
+                                      }
+                                      onChange={
+                                        event =>
+                                          setNotifySuccess(
+                                            event.target
+                                              .checked
+                                          )
+                                      }
+                                      type="checkbox"
+                                    />
+
+                                    <div>
+                                      <strong>
+                                        On success
+                                      </strong>
+
+                                      <span>
+                                        Sent after the scheduled Palworld action completes successfully.
+                                      </span>
+                                    </div>
+                                  </label>
+
+                                  {
+                                    notifySuccess
+                                      ? (
+                                          <textarea
+                                            className="calendar-notification-template"
+                                            disabled={
+                                              busy !==
+                                              null
+                                            }
+                                            maxLength={2000}
+                                            onChange={
+                                              event =>
+                                                setSuccessTemplate(
+                                                  event.target
+                                                    .value
+                                                )
+                                            }
+                                            rows={3}
+                                            value={
+                                              successTemplate
+                                            }
+                                          />
+                                        )
+                                      : null
+                                  }
+                                </div>
+
+                                <div className="calendar-notification-phase">
+                                  <label className="calendar-notification-toggle">
+                                    <input
+                                      checked={
+                                        notifyFailure
+                                      }
+                                      disabled={
+                                        busy !==
+                                        null
+                                      }
+                                      onChange={
+                                        event =>
+                                          setNotifyFailure(
+                                            event.target
+                                              .checked
+                                          )
+                                      }
+                                      type="checkbox"
+                                    />
+
+                                    <div>
+                                      <strong>
+                                        On failure
+                                      </strong>
+
+                                      <span>
+                                        Includes the scheduler error through the {"{{error}}"} template token.
+                                      </span>
+                                    </div>
+                                  </label>
+
+                                  {
+                                    notifyFailure
+                                      ? (
+                                          <textarea
+                                            className="calendar-notification-template"
+                                            disabled={
+                                              busy !==
+                                              null
+                                            }
+                                            maxLength={2000}
+                                            onChange={
+                                              event =>
+                                                setFailureTemplate(
+                                                  event.target
+                                                    .value
+                                                )
+                                            }
+                                            rows={3}
+                                            value={
+                                              failureTemplate
+                                            }
+                                          />
+                                        )
+                                      : null
+                                  }
+                                </div>
+
+                                <div className="calendar-template-help">
+                                  <strong>
+                                    Template tokens
+                                  </strong>
+
+                                  <div>
+                                    <code>
+                                      {"{{event.name}}"}
+                                    </code>
+
+                                    <code>
+                                      {"{{event.action}}"}
+                                    </code>
+
+                                    <code>
+                                      {"{{event.time}}"}
+                                    </code>
+
+                                    <code>
+                                      {"{{event.status}}"}
+                                    </code>
+
+                                    <code>
+                                      {"{{phase}}"}
+                                    </code>
+
+                                    <code>
+                                      {"{{minutes_before}}"}
+                                    </code>
+
+                                    <code>
+                                      {"{{error}}"}
+                                    </code>
+                                  </div>
+                                </div>
+
+                                <div className="calendar-notification-summary">
+                                  <BellRing
+                                    size={13}
+                                  />
+
+                                  <span>
+                                    {
+                                      selectedDestinationIds.length
+                                    } destination{
+                                      selectedDestinationIds.length ===
+                                        1
+                                        ? ""
+                                        : "s"
+                                    }
+                                    {" · "}
+                                    {
+                                      selectedDestinationIds.length *
+                                      (
+                                        beforeMinutes.length +
+                                        (
+                                          notifyStart
+                                            ? 1
+                                            : 0
+                                        ) +
+                                        (
+                                          notifySuccess
+                                            ? 1
+                                            : 0
+                                        ) +
+                                        (
+                                          notifyFailure
+                                            ? 1
+                                            : 0
+                                        )
+                                      )
+                                    } notifications
+                                  </span>
+                                </div>
+                              </>
+                            )
+                          : null
+                      }
+                    </>
+                  )
+            }
+          </div>
 
           <button
             className="calendar-create-button"
