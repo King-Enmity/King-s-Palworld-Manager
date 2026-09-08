@@ -1,5 +1,42 @@
-# King's Palworld Manager
+﻿# King's Palworld Server Manager
 
-A modular, self-hosted Palworld dedicated-server manager with a modern web UI.
+A self-hosted Palworld Dedicated Server bundled with a modern management WebGUI and distributed as a Docker image.
 
-> V1 is currently under active development. The self-hosted edition intentionally does not include application login/authentication, so the management UI must not be exposed directly to the public Internet.
+## V1
+
+Planned features include:
+
+- modern responsive WebGUI
+- Palworld lifecycle management
+- server and player status
+- validated server configuration
+- scheduler and maintenance calendar
+- Discord and generic webhooks
+- built-in wiki
+- backup and restore
+- world save import/export
+- individual player save import/export
+- Steam metadata and media
+- SQLite persistence
+- audit/event history
+
+## Stack
+
+- TypeScript
+- Node.js
+- Fastify
+- React
+- Vite
+- Zod
+- SQLite
+- Docker
+
+## Development
+
+Primary workspace:
+
+D:\KingsPalworldManager
+
+Current development branch:
+
+feat/v1-rebuild
