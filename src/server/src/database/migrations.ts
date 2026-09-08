@@ -106,7 +106,96 @@ const migrations: readonly Migration[] = [
           created_at DESC
         );
     `
+  },
+  {
+    version: 3,
+    name: "webhook_destinations",
+    sql: `
+      CREATE TABLE webhook_destinations (
+        id TEXT PRIMARY KEY,
+
+        name TEXT NOT NULL,
+
+        kind TEXT NOT NULL
+          CHECK (
+            kind IN (
+              'discord',
+              'generic'
+            )
+          ),
+
+        enabled INTEGER NOT NULL
+          CHECK (
+            enabled IN (
+              0,
+              1
+            )
+          ),
+
+        url_secret_json TEXT NOT NULL,
+        url_hint TEXT NOT NULL,
+
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+
+        last_sent_at TEXT,
+
+        last_status TEXT
+          CHECK (
+            last_status IS NULL
+            OR last_status IN (
+              'success',
+              'failed'
+            )
+          ),
+
+        last_http_status INTEGER,
+        last_error TEXT
+      ) STRICT;
+
+      CREATE TABLE webhook_deliveries (
+        id TEXT PRIMARY KEY,
+
+        destination_id TEXT NOT NULL
+          REFERENCES webhook_destinations(id)
+          ON DELETE CASCADE,
+
+        event_type TEXT NOT NULL,
+
+        status TEXT NOT NULL
+          CHECK (
+            status IN (
+              'sending',
+              'success',
+              'failed'
+            )
+          ),
+
+        created_at TEXT NOT NULL,
+        completed_at TEXT,
+
+        http_status INTEGER,
+        error TEXT
+      ) STRICT;
+
+      CREATE INDEX idx_webhook_destinations_created_at
+        ON webhook_destinations(
+          created_at DESC
+        );
+
+      CREATE INDEX idx_webhook_deliveries_created_at
+        ON webhook_deliveries(
+          created_at DESC
+        );
+
+      CREATE INDEX idx_webhook_deliveries_destination
+        ON webhook_deliveries(
+          destination_id,
+          created_at DESC
+        );
+    `
   }
+
 ];
 
 export function applyMigrations(

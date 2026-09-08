@@ -78,6 +78,22 @@ import {
   SteamMetadataService
 } from "./modules/steam/steam-metadata-service.js";
 
+import {
+  WebhookHttpClient
+} from "./modules/webhooks/webhook-http-client.js";
+
+import {
+  WebhookRepository
+} from "./modules/webhooks/webhook-repository.js";
+
+import {
+  WebhookSecretVault
+} from "./modules/webhooks/webhook-secret-vault.js";
+
+import {
+  WebhookService
+} from "./modules/webhooks/webhook-service.js";
+
 async function main():
   Promise<void> {
   const managerStartedAt =
@@ -205,6 +221,33 @@ async function main():
 
   scheduler.start();
 
+  const webhookRepository =
+    new WebhookRepository(
+      database
+    );
+
+  const webhookVault =
+    new WebhookSecretVault(
+      config.dataPath
+    );
+
+  const webhookHttp =
+    new WebhookHttpClient();
+
+  const webhooks =
+    new WebhookService({
+      repository:
+        webhookRepository,
+
+      audit,
+
+      vault:
+        webhookVault,
+
+      http:
+        webhookHttp
+    });
+
   const steamMetadata =
     new SteamMetadataService(
       config
@@ -238,7 +281,9 @@ async function main():
 
       steamMetadata,
 
-      scheduler
+      scheduler,
+
+      webhooks
     });
 
   audit.record({

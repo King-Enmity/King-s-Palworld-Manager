@@ -79,6 +79,14 @@ import type {
   SteamMetadataService
 } from "./modules/steam/steam-metadata-service.js";
 
+import {
+  registerWebhookRoutes
+} from "./modules/webhooks/webhook-routes.js";
+
+import type {
+  WebhookService
+} from "./modules/webhooks/webhook-service.js";
+
 const SettingValueSchema =
   z.union([
     z.string()
@@ -159,6 +167,9 @@ export interface AppDependencies {
 
   scheduler:
     SchedulerService;
+
+  webhooks:
+    WebhookService;
 }
 
 export function buildApp(
@@ -272,6 +283,11 @@ export function buildApp(
   registerSchedulerRoutes(
     app,
     dependencies.scheduler
+  );
+
+  registerWebhookRoutes(
+    app,
+    dependencies.webhooks
   );
 
   app.get(
