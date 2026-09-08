@@ -1,0 +1,22 @@
+{
+  "name": "kings-palworld-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "King's Palworld Server Manager",
+  "packageManager": "npm@11.17.0",
+  "workspaces": [
+    "src/shared",
+    "src/server",
+    "src/web"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace @kpm/server",
+    "dev:web": "npm run dev --workspace @kpm/web",
+    "build": "npm run build --workspace @kpm/shared && npm run build --workspace @kpm/server && npm run build --workspace @kpm/web",
+    "typecheck": "npm run typecheck --workspace @kpm/shared && npm run typecheck --workspace @kpm/server && npm run typecheck --workspace @kpm/web"
+  },
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  }
+}
