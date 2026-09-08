@@ -16,7 +16,7 @@ The image is intentionally monolithic at the container boundary but modular at t
 |  +-- scheduler/background services               |
 |  +-- webhook engine                              |
 |  +-- wiki/content services                       |
-|  +-- backup/update orchestration                 |
+|  +-- backup/update/save orchestration            |
 |  +-- Palworld adapter                            |
 |  +-- SQLite                                      |
 |          |                                       |
@@ -58,6 +58,7 @@ The Manager application owns:
 - webhook delivery
 - wiki/content services
 - backup/restore/update orchestration
+- world/player save import and export
 - Steam metadata/media normalization
 - event/audit history
 
@@ -98,11 +99,75 @@ The source should grow by responsibility rather than through large shared contro
 - `Webhooks` - destinations, rendering, delivery, retry/history
 - `Wiki` - pages/content/references
 - `Backups` - snapshot, restore, retention, integrity checks
+- `SaveManagement` - world/player export/import, package validation, migration metadata
 - `Infrastructure` - SQLite, filesystem, networking, clocks, process execution
 - `Api` - validated HTTP boundary
 - `Web` - React application
 
 Future modules may be separated into assemblies or processes without changing the external API contracts.
+
+## Save management boundary
+
+Save import/export is a V1 product capability, not an ad-hoc filesystem upload endpoint.
+
+The Manager should model four explicit operations:
+
+1. export full world/server save package
+2. import full world/server save package
+3. export one player save
+4. import/replace one player save
+
+Each operation must produce an operation record containing at least:
+
+- operation ID
+- type
+- started/completed timestamps
+- source/target identifiers where applicable
+- package hash
+- package format/version metadata where detectable
+- compatibility warnings
+- pre-operation snapshot reference
+- outcome/error information
+
+### Import safety pipeline
+
+Uploaded/imported save content must pass through a staged pipeline before touching live data:
+
+```text
+upload -> quarantine -> size/type checks -> archive inspection
+       -> path normalization -> manifest/inventory -> compatibility checks
+       -> pre-import snapshot -> controlled server stop/quiesce
+       -> staged extraction -> validation -> atomic/safe replacement
+       -> server start/health verification -> commit operation
+```
+
+On failure, the Manager should preserve diagnostic information and offer rollback to the pre-import snapshot where possible.
+
+### Archive and filesystem validation
+
+- enforce configurable upload/package size limits
+- allow only explicitly supported package formats
+- reject absolute paths
+- reject `..` path traversal
+- reject symlink/hardlink/device entries unless explicitly supported and proven safe
+- reject extraction targets outside the staging root
+- cap file count, expanded size, and compression ratio to reduce archive-bomb risk
+- reject unexpected executable/script content where it is not part of an allowed save package
+- never extract directly into the live Palworld Saved directory
+- calculate hashes for imported/exported packages
+- use staging directories on the same filesystem when atomic rename/replacement is desired
+
+### World import behavior
+
+A world import may affect world-level files, player files, configuration-adjacent state, and identifiers. It must therefore be treated as a server-level destructive operation with an automatic pre-import snapshot.
+
+The implementation should detect and clearly surface version/identity conflicts rather than silently rewriting unknown structures. Any future save conversion logic must live behind explicit versioned adapters and should never mutate the user's original upload.
+
+### Player import behavior
+
+Player import/export must identify players using safe server-side identifiers discovered from the current save/runtime state, not arbitrary client-provided filesystem paths.
+
+The API should accept a logical player ID and resolve it to allowed save paths internally. Replacing a player save must create a snapshot of the current player data first and should require the server to be stopped/quiesced when needed for consistency.
 
 ## Trust boundaries
 
@@ -113,7 +178,8 @@ Future modules may be separated into assemblies or processes without changing th
 5. Outbound webhook destinations are untrusted and must pass SSRF protections.
 6. Steam/Pocketpair responses are external data and must be parsed defensively.
 7. Persistent files may be modified outside the application; reads must tolerate corruption/invalid state and report actionable errors.
-8. Secrets must never be written to logs or committed to the repository.
+8. Uploaded save packages and archives are hostile input until fully validated.
+9. Secrets must never be written to logs or committed to the repository.
 
 ## Validation rules
 
@@ -132,6 +198,7 @@ Future modules may be separated into assemblies or processes without changing th
 - Use idempotency/operation IDs where retries could duplicate external effects.
 - Write configuration atomically: create validated temporary output, fsync where practical, then replace.
 - Keep a last-known-good configuration revision before applying changes.
+- Quarantine uploads before inspection and never trust archive entry paths.
 
 ## Palworld control path
 
@@ -162,6 +229,8 @@ V1 should avoid silently self-updating the application container. The WebGUI may
 - atomic config writes
 - audit/event history
 - backup integrity checks
+- save upload quarantine and archive traversal protections
+- automatic pre-import snapshots
 - conservative Docker capabilities/permissions
 
 ### Later public edition
