@@ -23,12 +23,13 @@ Docker / Docker Compose
 |        +--> Palworld REST API (internal)    |
 |        +--> Steam metadata                  |
 |        +--> webhooks / wiki / scheduler     |
+|        +--> save import/export              |
 |                                             |
 |  Palworld Dedicated Server                  |
 +---------------------------------------------+
         |
         +--> /manager/data       persistent manager data
-        +--> Palworld Saved      persistent world/config data
+        +--> Palworld Saved      world/player/config data
 ```
 
 The released image will wrap a pinned official Pocketpair Palworld server image rather than asking users to assemble several application containers themselves.
@@ -46,11 +47,29 @@ V1 is designed for self-hosters running a server for themselves and friends. Pla
 - built-in wiki/content pages
 - wiki content usable by webhook/forum-style announcements where supported
 - backups, restore points, and update controls
+- **world-save export and import**
+- **individual player-save export and import**
+- save-package validation, compatibility checks, and pre-import safety snapshots
 - Steam metadata such as artwork, descriptions, genres/tags, screenshots, and trailers where useful
 - event/audit history
 - SQLite persistence for manager state
 
-Application login/authentication is intentionally deferred for the first self-hosted release. Security controls still start in V1: strict input validation, secret hygiene, SSRF protections, safe process invocation, internal-only Palworld REST access, and conservative network exposure.
+Application login/authentication is intentionally deferred for the first self-hosted release. Security controls still start in V1: strict input validation, secret hygiene, SSRF protections, safe process invocation, internal-only Palworld REST access, conservative network exposure, and defensive validation of uploaded save archives.
+
+## Save portability
+
+V1 treats server data portability as a first-class feature rather than only a backup feature.
+
+The WebGUI will provide separate flows for:
+
+- exporting a complete world/save package
+- importing a complete world/save package
+- exporting one player's save data
+- importing/replacing one player's save data
+
+Imports must never blindly overwrite live data. The Manager will validate archive structure and size, prevent path traversal, reject unexpected files, create a pre-import snapshot, stop or quiesce the game server when required, apply the change atomically where practical, and retain enough metadata to recover from a failed import.
+
+See `docs/save-management.md` for the V1 design.
 
 ## Planned image
 
@@ -107,7 +126,7 @@ V1 uses two persistent areas:
 /pal/Package/Pal/Saved
 ```
 
-Manager state will use SQLite under `/manager/data`. Palworld saves/configuration remain in the Palworld Saved directory so container replacement and image upgrades do not destroy server state.
+Manager state will use SQLite under `/manager/data`. Palworld world, player, and configuration data remain in the Palworld Saved directory so container replacement and image upgrades do not destroy server state.
 
 ## Development
 
@@ -134,6 +153,6 @@ See `docs/release-model.md` for the planned CI/CD and tagging model.
 
 ## Current implementation checkpoint
 
-The existing development branch already contains the first React dashboard shell, .NET API/worker experiments, Steam metadata normalization, and Docker hardening work. Those pieces are now being refactored toward the single-image runtime described above.
+The existing development branch contains the first React dashboard shell, .NET API/worker experiments, Steam metadata normalization, and single-image Docker scaffolding. Those pieces are being refactored into the production V1 runtime described above.
 
-The draft PR remains intentionally unmerged while the runtime model is refactored and exercised end-to-end.
+The draft PR remains intentionally unmerged while the runtime model, persistence, save-management, and Palworld control paths are exercised end-to-end.
