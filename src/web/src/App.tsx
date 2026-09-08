@@ -42,6 +42,10 @@ import {
   SettingsPage
 } from "./SettingsPage";
 
+import {
+  CalendarPage
+} from "./CalendarPage";
+
 type Health =
   | "offline"
   | "transitioning"
@@ -1453,7 +1457,12 @@ export default function App() {
                     ? (
                         <SettingsPage />
                       )
-                    : renderPlaceholder()
+                    : page ===
+                        "Calendar"
+                      ? (
+                          <CalendarPage />
+                        )
+                      : renderPlaceholder()
         }
       </main>
     </div>
