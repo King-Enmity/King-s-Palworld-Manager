@@ -1,0 +1,39 @@
+name: kings-palworld-manager-dev
+
+services:
+  kings-palworld-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PALWORLD_IMAGE: ${KPM_PALWORLD_BASE_IMAGE:-ghcr.io/pocketpairjp/palserver:v1.0.4.102642}
+    image: kings-palworld-manager:dev
+    container_name: kings-palworld-manager-dev
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+    ports:
+      - "${KPM_BIND_ADDRESS:-127.0.0.1}:${KPM_HTTP_PORT:-8080}:8080/tcp"
+      - "${KPM_PALWORLD_PUBLIC_PORT:-8211}:8211/udp"
+      - "${KPM_PALWORLD_QUERY_PORT:-27015}:27015/udp"
+
+    environment:
+      TZ: ${TZ:-UTC}
+      KPM_SERVER_NAME: ${KPM_SERVER_NAME:-King's Palworld Server}
+      KPM_SERVER_PASSWORD: ${KPM_SERVER_PASSWORD:-}
+      KPM_ADMIN_PASSWORD: ${KPM_ADMIN_PASSWORD:-development-only-change-me}
+      KPM_MAX_PLAYERS: ${KPM_MAX_PLAYERS:-16}
+      KPM_COMMUNITY: ${KPM_COMMUNITY:-false}
+      KPM_CROSSPLAY_PLATFORMS: ${KPM_CROSSPLAY_PLATFORMS:-(Steam,Xbox,PS5,Mac)}
+      KPM_STEAM_APP_ID: ${KPM_STEAM_APP_ID:-1623730}
+
+    volumes:
+      - manager-data-dev:/manager/data
+      - palworld-saved-dev:/pal/Package/Pal/Saved
+
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  manager-data-dev:
+  palworld-saved-dev:
