@@ -51,6 +51,10 @@ import {
 } from "./modules/palworld/settings-writer.js";
 
 import {
+  SaveInventoryService
+} from "./modules/saves/save-inventory-service.js";
+
+import {
   SystemService
 } from "./modules/system/system-service.js";
 
@@ -135,6 +139,11 @@ async function main():
   palworldLifecycle
     .initialize();
 
+  const saveInventory =
+    new SaveInventoryService(
+      config
+    );
+
   const systemService =
     new SystemService({
       config,
@@ -155,7 +164,9 @@ async function main():
       palworldRest,
 
       palworldSettings,
-      palworldSettingsWriter
+      palworldSettingsWriter,
+
+      saveInventory
     });
 
   audit.record({

@@ -41,6 +41,14 @@ import {
   type PalworldSettingsWriter
 } from "./modules/palworld/settings-writer.js";
 
+import {
+  registerSaveRoutes
+} from "./modules/saves/save-routes.js";
+
+import type {
+  SaveInventoryService
+} from "./modules/saves/save-inventory-service.js";
+
 import type {
   SystemService
 } from "./modules/system/system-service.js";
@@ -110,6 +118,9 @@ export interface AppDependencies {
 
   palworldSettingsWriter:
     PalworldSettingsWriter;
+
+  saveInventory:
+    SaveInventoryService;
 }
 
 export function buildApp(
@@ -182,6 +193,11 @@ export function buildApp(
             .toISOString()
       };
     }
+  );
+
+  registerSaveRoutes(
+    app,
+    dependencies.saveInventory
   );
 
   app.get(
