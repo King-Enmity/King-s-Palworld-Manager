@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fastify/multipart": "10.1.1",
     "@kpm/shared": "file:../shared",
     "better-sqlite3": "13.0.3",
     "fastify": "^5.0.0",

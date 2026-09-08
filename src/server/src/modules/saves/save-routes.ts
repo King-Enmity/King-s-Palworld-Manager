@@ -16,6 +16,11 @@ import {
 } from "./save-export-service.js";
 
 import {
+  SaveImportError,
+  type SaveImportService
+} from "./save-import-service.js";
+
+import {
   SaveInventoryError,
   type SaveInventoryService
 } from "./save-inventory-service.js";
@@ -54,6 +59,37 @@ const PlayerParamsSchema =
       IdentifierSchema
   }).strict();
 
+function statusCodeOf(
+  error:
+    unknown
+): number | null {
+  if (
+    typeof error !==
+      "object" ||
+    error ===
+      null ||
+    !(
+      "statusCode"
+      in error
+    )
+  ) {
+    return null;
+  }
+
+  const statusCode =
+    (
+      error as {
+        statusCode?:
+          unknown;
+      }
+    ).statusCode;
+
+  return typeof statusCode ===
+    "number"
+      ? statusCode
+      : null;
+}
+
 export function registerSaveRoutes(
   app:
     FastifyInstance,
@@ -62,7 +98,10 @@ export function registerSaveRoutes(
     SaveInventoryService,
 
   exports:
-    SaveExportService
+    SaveExportService,
+
+  imports:
+    SaveImportService
 ): void {
   const sendError =
     (
@@ -76,7 +115,9 @@ export function registerSaveRoutes(
         error instanceof
           SaveInventoryError ||
         error instanceof
-          SaveExportError
+          SaveExportError ||
+        error instanceof
+          SaveImportError
       ) {
         return reply
           .code(
@@ -88,6 +129,23 @@ export function registerSaveRoutes(
 
             message:
               error.message
+          });
+      }
+
+      if (
+        statusCodeOf(
+          error
+        ) ===
+        413
+      ) {
+        return reply
+          .code(413)
+          .send({
+            error:
+              "save-import-archive-too-large",
+
+            message:
+              "Save import archive exceeds the maximum allowed size."
           });
       }
 
@@ -327,6 +385,118 @@ export function registerSaveRoutes(
       } catch (
         error
       ) {
+        return sendError(
+          reply,
+          error
+        );
+      }
+    }
+  );
+
+  app.post(
+    "/api/v1/saves/import/preview",
+
+    {
+      bodyLimit:
+        imports.maxRequestBytes
+    },
+
+    async (
+      request,
+      reply
+    ) => {
+      let upload:
+        ReturnType<
+          SaveImportService[
+            "beginUpload"
+          ]
+        > | null =
+          null;
+
+      try {
+        const part =
+          await request.file({
+            limits: {
+              files:
+                1,
+
+              fields:
+                0,
+
+              parts:
+                1,
+
+              fileSize:
+                imports
+                  .maxArchiveBytes
+            }
+          });
+
+        if (!part) {
+          return reply
+            .code(400)
+            .send({
+              error:
+                "save-import-file-missing",
+
+              message:
+                "A save import archive is required."
+            });
+        }
+
+        if (
+          part.fieldname !==
+          "archive"
+        ) {
+          part.file.resume();
+
+          return reply
+            .code(400)
+            .send({
+              error:
+                "save-import-invalid-field",
+
+              message:
+                "The upload field must be named archive."
+            });
+        }
+
+        upload =
+          imports.beginUpload();
+
+        const stored =
+          await imports
+            .storeArchive(
+              upload,
+              part.file
+            );
+
+        if (
+          part.file
+            .truncated
+        ) {
+          throw new SaveImportError(
+            "Save import archive exceeds the maximum allowed size.",
+            413,
+            "save-import-archive-too-large"
+          );
+        }
+
+        return await imports
+          .preview(
+            upload,
+            stored,
+            part.filename
+          );
+      } catch (
+        error
+      ) {
+        if (upload) {
+          imports.discard(
+            upload.operationId
+          );
+        }
+
         return sendError(
           reply,
           error

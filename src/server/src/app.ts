@@ -1,3 +1,5 @@
+import fastifyMultipart from "@fastify/multipart";
+
 import Fastify from "fastify";
 import { z } from "zod";
 
@@ -44,6 +46,10 @@ import {
 import type {
   SaveExportService
 } from "./modules/saves/save-export-service.js";
+
+import type {
+  SaveImportService
+} from "./modules/saves/save-import-service.js";
 
 import {
   registerSaveRoutes
@@ -128,6 +134,9 @@ export interface AppDependencies {
 
   saveExports:
     SaveExportService;
+
+  saveImports:
+    SaveImportService;
 }
 
 export function buildApp(
@@ -139,6 +148,30 @@ export function buildApp(
       logger:
         true
     });
+
+  app.register(
+    fastifyMultipart,
+    {
+      throwFileSizeLimit:
+        true,
+
+      limits: {
+        files:
+          1,
+
+        fields:
+          0,
+
+        parts:
+          1,
+
+        fileSize:
+          dependencies
+            .saveImports
+            .maxArchiveBytes
+      }
+    }
+  );
 
   app.get(
     "/health",
@@ -205,7 +238,8 @@ export function buildApp(
   registerSaveRoutes(
     app,
     dependencies.saveInventory,
-    dependencies.saveExports
+    dependencies.saveExports,
+    dependencies.saveImports
   );
 
   app.get(
