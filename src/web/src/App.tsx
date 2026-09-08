@@ -46,6 +46,10 @@ import {
   CalendarPage
 } from "./CalendarPage";
 
+import {
+  WebhooksPage
+} from "./WebhooksPage";
+
 type Health =
   | "offline"
   | "transitioning"
@@ -1462,7 +1466,12 @@ export default function App() {
                       ? (
                           <CalendarPage />
                         )
-                      : renderPlaceholder()
+                      : page ===
+                          "Webhooks"
+                        ? (
+                            <WebhooksPage />
+                          )
+                        : renderPlaceholder()
         }
       </main>
     </div>
