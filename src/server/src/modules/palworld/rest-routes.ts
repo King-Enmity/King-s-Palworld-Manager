@@ -13,6 +13,10 @@ import type {
   PalworldRestService
 } from "./rest-service.js";
 
+import type {
+  PalworldRuntimeSnapshot
+} from "./runtime-state.js";
+
 const AnnounceRequestSchema =
   z.object({
     message:
@@ -22,12 +26,36 @@ const AnnounceRequestSchema =
         .max(512)
   }).strict();
 
+const PlayerParamsSchema =
+  z.object({
+    userId:
+      z.string()
+        .min(1)
+        .max(256)
+        .regex(
+          /^[^\s\x00-\x1F\x7F]+$/
+        )
+  }).strict();
+
+const PlayerActionSchema =
+  z.object({
+    message:
+      z.string()
+        .trim()
+        .min(1)
+        .max(512)
+        .optional()
+  }).strict();
+
 export function registerPalworldRestRoutes(
   app:
     FastifyInstance,
 
   service:
-    PalworldRestService
+    PalworldRestService,
+
+  runtime:
+    () => PalworldRuntimeSnapshot
 ): void {
   const execute =
     async (
@@ -83,6 +111,14 @@ export function registerPalworldRestRoutes(
     "/api/v1/palworld/rest/status",
     async () =>
       service.status()
+  );
+
+  app.get(
+    "/api/v1/palworld/live",
+    async () =>
+      service.live(
+        runtime()
+      )
   );
 
   app.get(
@@ -183,5 +219,136 @@ export function registerPalworldRestRoutes(
         () =>
           service.save()
       )
+  );
+
+  app.post(
+    "/api/v1/palworld/players/:userId/kick",
+    async (
+      request,
+      reply
+    ) => {
+      const params =
+        PlayerParamsSchema
+          .safeParse(
+            request.params
+          );
+
+      const body =
+        PlayerActionSchema
+          .safeParse(
+            request.body ??
+            {}
+          );
+
+      if (
+        !params.success ||
+        !body.success
+      ) {
+        return reply
+          .code(400)
+          .send({
+            error:
+              "invalid-request",
+
+            message:
+              "Kick request is invalid."
+          });
+      }
+
+      return execute(
+        reply,
+        () =>
+          service.kick(
+            params.data
+              .userId,
+
+            body.data
+              .message
+          )
+      );
+    }
+  );
+
+  app.post(
+    "/api/v1/palworld/players/:userId/ban",
+    async (
+      request,
+      reply
+    ) => {
+      const params =
+        PlayerParamsSchema
+          .safeParse(
+            request.params
+          );
+
+      const body =
+        PlayerActionSchema
+          .safeParse(
+            request.body ??
+            {}
+          );
+
+      if (
+        !params.success ||
+        !body.success
+      ) {
+        return reply
+          .code(400)
+          .send({
+            error:
+              "invalid-request",
+
+            message:
+              "Ban request is invalid."
+          });
+      }
+
+      return execute(
+        reply,
+        () =>
+          service.ban(
+            params.data
+              .userId,
+
+            body.data
+              .message
+          )
+      );
+    }
+  );
+
+  app.post(
+    "/api/v1/palworld/players/:userId/unban",
+    async (
+      request,
+      reply
+    ) => {
+      const params =
+        PlayerParamsSchema
+          .safeParse(
+            request.params
+          );
+
+      if (!params.success) {
+        return reply
+          .code(400)
+          .send({
+            error:
+              "invalid-request",
+
+            message:
+              "Unban request is invalid."
+          });
+      }
+
+      return execute(
+        reply,
+        () =>
+          service.unban(
+            params.data
+              .userId
+          )
+      );
+    }
   );
 }

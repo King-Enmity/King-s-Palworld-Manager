@@ -259,6 +259,68 @@ export class PalworldRestClient {
     );
   }
 
+  public kick(
+    userid: string,
+    message?: string
+  ): Promise<void> {
+    const body: {
+      userid: string;
+      message?: string;
+    } = {
+      userid
+    };
+
+    if (
+      message !== undefined
+    ) {
+      body.message =
+        message;
+    }
+
+    return this.requestVoid(
+      "POST",
+      "/kick",
+      body
+    );
+  }
+
+  public ban(
+    userid: string,
+    message?: string
+  ): Promise<void> {
+    const body: {
+      userid: string;
+      message?: string;
+    } = {
+      userid
+    };
+
+    if (
+      message !== undefined
+    ) {
+      body.message =
+        message;
+    }
+
+    return this.requestVoid(
+      "POST",
+      "/ban",
+      body
+    );
+  }
+
+  public unban(
+    userid: string
+  ): Promise<void> {
+    return this.requestVoid(
+      "POST",
+      "/unban",
+      {
+        userid
+      }
+    );
+  }
+
   private createStatusBase(
     configuration:
       PalworldRestConfigurationSnapshot

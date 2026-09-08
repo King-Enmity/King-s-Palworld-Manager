@@ -99,6 +99,11 @@ export type PalworldRestInfo =
     typeof PalworldRestInfoSchema
   >;
 
+export type PalworldRestPlayer =
+  z.infer<
+    typeof PalworldRestPlayerSchema
+  >;
+
 export type PalworldRestPlayers =
   z.infer<
     typeof PalworldRestPlayersSchema

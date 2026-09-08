@@ -304,7 +304,13 @@ export function buildApp(
 
   registerPalworldRestRoutes(
     app,
-    dependencies.palworldRest
+
+    dependencies.palworldRest,
+
+    () =>
+      dependencies
+        .palworldLifecycle
+        .snapshot()
   );
 
   app.get(
