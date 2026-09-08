@@ -9,10 +9,10 @@ RUN npm run build
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS manager-build
 WORKDIR /src/backend
-COPY src/backend/Api/Api.csproj ./Api/Api.csproj
+COPY src/backend/Api/KingPalworldManager.Api.csproj ./Api/KingPalworldManager.Api.csproj
 COPY src/backend/Api/ ./Api/
 COPY --from=web-build /src/web/dist ./Api/wwwroot
-RUN dotnet publish ./Api/Api.csproj \
+RUN dotnet publish ./Api/KingPalworldManager.Api.csproj \
     --configuration Release \
     --runtime linux-x64 \
     --self-contained true \
