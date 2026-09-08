@@ -1,34 +1,14 @@
-import {
-  buildApp
-} from "./app.js";
+import { buildApp } from "./app.js";
+import { loadAppConfig } from "./config/app-config.js";
+import { openDatabase } from "./database/database.js";
+import { AuditRepository } from "./infrastructure/audit-repository.js";
 
-import {
-  loadAppConfig
-} from "./config/app-config.js";
+import { PalworldDiscoveryService } from "./modules/palworld/discovery-service.js";
+import { PalworldRuntimeState } from "./modules/palworld/runtime-state.js";
+import { PalworldSettingsService } from "./modules/palworld/settings-service.js";
+import { PalworldSettingsWriter } from "./modules/palworld/settings-writer.js";
 
-import {
-  openDatabase
-} from "./database/database.js";
-
-import {
-  AuditRepository
-} from "./infrastructure/audit-repository.js";
-
-import {
-  PalworldDiscoveryService
-} from "./modules/palworld/discovery-service.js";
-
-import {
-  PalworldRuntimeState
-} from "./modules/palworld/runtime-state.js";
-
-import {
-  PalworldSettingsService
-} from "./modules/palworld/settings-service.js";
-
-import {
-  SystemService
-} from "./modules/system/system-service.js";
+import { SystemService } from "./modules/system/system-service.js";
 
 async function main(): Promise<void> {
   const managerStartedAt =
@@ -60,6 +40,12 @@ async function main(): Promise<void> {
       config
     );
 
+  const palworldSettingsWriter =
+    new PalworldSettingsWriter(
+      config,
+      audit
+    );
+
   const systemService =
     new SystemService({
       config,
@@ -74,7 +60,8 @@ async function main(): Promise<void> {
       database,
       systemService,
       palworldDiscovery,
-      palworldSettings
+      palworldSettings,
+      palworldSettingsWriter
     });
 
   audit.record({
@@ -108,28 +95,22 @@ async function main(): Promise<void> {
     });
 
     await app.close();
-
     database.close();
   };
 
   process.once(
     "SIGINT",
-    () =>
-      void shutdown("SIGINT")
+    () => void shutdown("SIGINT")
   );
 
   process.once(
     "SIGTERM",
-    () =>
-      void shutdown("SIGTERM")
+    () => void shutdown("SIGTERM")
   );
 
   await app.listen({
-    host:
-      config.bindAddress,
-
-    port:
-      config.httpPort
+    host: config.bindAddress,
+    port: config.httpPort
   });
 
   audit.record({
@@ -137,11 +118,9 @@ async function main(): Promise<void> {
     action: "listening",
     message:
       "Manager HTTP API is listening.",
-
     metadata: {
       bindAddress:
         config.bindAddress,
-
       port:
         config.httpPort
     }
