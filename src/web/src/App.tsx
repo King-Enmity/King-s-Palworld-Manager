@@ -33,6 +33,10 @@ import {
   PlayersPage
 } from "./PlayersPage";
 
+import {
+  SavesPage
+} from "./SavesPage";
+
 type Health =
   | "offline"
   | "transitioning"
@@ -1254,7 +1258,21 @@ export default function App() {
                       onRefresh={loadLive}
                     />
                   )
-                : renderPlaceholder()
+                : page ===
+                    "Backups & Saves"
+                  ? (
+                      <SavesPage
+                        managerApiError={
+                          apiError
+                        }
+                        runtimeStatus={
+                          live?.runtime
+                            .status ??
+                          "unknown"
+                        }
+                      />
+                    )
+                  : renderPlaceholder()
         }
       </main>
     </div>
