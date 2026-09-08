@@ -67,6 +67,14 @@ import {
   registerSchedulerRoutes
 } from "./modules/scheduler/scheduler-routes.js";
 
+import {
+  registerSchedulerNotificationRoutes
+} from "./modules/scheduler/scheduler-notification-routes.js";
+
+import type {
+  SchedulerNotificationService
+} from "./modules/scheduler/scheduler-notification-service.js";
+
 import type {
   SchedulerService
 } from "./modules/scheduler/scheduler-service.js";
@@ -167,6 +175,9 @@ export interface AppDependencies {
 
   scheduler:
     SchedulerService;
+
+  schedulerNotifications:
+    SchedulerNotificationService;
 
   webhooks:
     WebhookService;
@@ -283,6 +294,11 @@ export function buildApp(
   registerSchedulerRoutes(
     app,
     dependencies.scheduler
+  );
+
+  registerSchedulerNotificationRoutes(
+    app,
+    dependencies.schedulerNotifications
   );
 
   registerWebhookRoutes(

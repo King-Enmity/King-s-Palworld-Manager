@@ -71,6 +71,14 @@ import {
 } from "./modules/scheduler/scheduler-repository.js";
 
 import {
+  SchedulerNotificationRepository
+} from "./modules/scheduler/scheduler-notification-repository.js";
+
+import {
+  SchedulerNotificationService
+} from "./modules/scheduler/scheduler-notification-service.js";
+
+import {
   SchedulerService
 } from "./modules/scheduler/scheduler-service.js";
 
@@ -202,25 +210,6 @@ async function main():
       database
     );
 
-  const scheduler =
-    new SchedulerService({
-      repository:
-        schedulerRepository,
-
-      audit,
-
-      lifecycle:
-        palworldLifecycle,
-
-      rest:
-        palworldRest,
-
-      settingsWriter:
-        palworldSettingsWriter
-    });
-
-  scheduler.start();
-
   const webhookRepository =
     new WebhookRepository(
       database
@@ -247,6 +236,44 @@ async function main():
       http:
         webhookHttp
     });
+
+  const schedulerNotificationRepository =
+    new SchedulerNotificationRepository(
+      database
+    );
+
+  const schedulerNotifications =
+    new SchedulerNotificationService({
+      repository:
+        schedulerNotificationRepository,
+
+      scheduler:
+        schedulerRepository,
+
+      webhooks,
+
+      audit
+    });
+
+  const scheduler =
+    new SchedulerService({
+      repository:
+        schedulerRepository,
+
+      audit,
+
+      lifecycle:
+        palworldLifecycle,
+
+      rest:
+        palworldRest,
+
+      settingsWriter:
+        palworldSettingsWriter
+    });
+
+  schedulerNotifications.start();
+  scheduler.start();
 
   const steamMetadata =
     new SteamMetadataService(
@@ -282,6 +309,8 @@ async function main():
       steamMetadata,
 
       scheduler,
+
+      schedulerNotifications,
 
       webhooks
     });
@@ -329,6 +358,7 @@ async function main():
           `Manager stopping after ${signal}.`
       });
 
+      schedulerNotifications.stop();
       scheduler.stop();
 
       try {

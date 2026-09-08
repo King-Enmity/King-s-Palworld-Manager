@@ -194,6 +194,87 @@ const migrations: readonly Migration[] = [
           created_at DESC
         );
     `
+  },
+  {
+    version: 4,
+    name: "scheduler_notifications",
+    sql: `
+      CREATE TABLE scheduler_notifications (
+        id TEXT PRIMARY KEY,
+
+        job_id TEXT NOT NULL
+          REFERENCES scheduler_jobs(id)
+          ON DELETE CASCADE,
+
+        destination_id TEXT NOT NULL
+          REFERENCES webhook_destinations(id)
+          ON DELETE CASCADE,
+
+        phase TEXT NOT NULL
+          CHECK (
+            phase IN (
+              'before',
+              'start',
+              'success',
+              'failure'
+            )
+          ),
+
+        minutes_before INTEGER
+          CHECK (
+            (
+              phase = 'before'
+              AND minutes_before
+                BETWEEN 1 AND 10080
+            )
+            OR
+            (
+              phase <> 'before'
+              AND minutes_before IS NULL
+            )
+          ),
+
+        message_template TEXT NOT NULL,
+
+        status TEXT NOT NULL
+          CHECK (
+            status IN (
+              'waiting',
+              'pending',
+              'sending',
+              'sent',
+              'failed',
+              'cancelled'
+            )
+          ),
+
+        due_at TEXT,
+
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+
+        sent_at TEXT,
+        last_error TEXT
+      ) STRICT;
+
+      CREATE INDEX idx_scheduler_notifications_job
+        ON scheduler_notifications(
+          job_id,
+          created_at
+        );
+
+      CREATE INDEX idx_scheduler_notifications_due
+        ON scheduler_notifications(
+          status,
+          due_at
+        );
+
+      CREATE INDEX idx_scheduler_notifications_destination
+        ON scheduler_notifications(
+          destination_id,
+          created_at
+        );
+    `
   }
 
 ];
