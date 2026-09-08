@@ -234,6 +234,31 @@ export class PalworldRestClient {
     );
   }
 
+  public shutdown(
+    waittime: number,
+    message?: string
+  ): Promise<void> {
+    const body: {
+      waittime: number;
+      message?: string;
+    } = {
+      waittime
+    };
+
+    if (
+      message !== undefined
+    ) {
+      body.message =
+        message;
+    }
+
+    return this.requestVoid(
+      "POST",
+      "/shutdown",
+      body
+    );
+  }
+
   private createStatusBase(
     configuration:
       PalworldRestConfigurationSnapshot

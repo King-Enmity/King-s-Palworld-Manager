@@ -35,6 +35,16 @@ export class PalworldLifecycleError
   }
 }
 
+export interface PalworldLifecycleRestControl {
+  save():
+    Promise<unknown>;
+
+  shutdown(
+    waittime: number,
+    message?: string
+  ): Promise<unknown>;
+}
+
 export interface PalworldLifecycleDependencies {
   runtime:
     PalworldRuntimeState;
@@ -44,6 +54,12 @@ export interface PalworldLifecycleDependencies {
 
   processSpec:
     PalworldProcessSpec | null;
+
+  restControl:
+    PalworldLifecycleRestControl | null;
+
+  restShutdownWaitSeconds:
+    number;
 
   stopTimeoutMs:
     number;
@@ -547,6 +563,189 @@ export class PalworldLifecycleService {
 
         message:
           "Stopping Palworld dedicated server.",
+
+        metadata: {
+          pid:
+            child.pid ?? null
+        }
+      });
+
+    const restControl =
+      this.dependencies
+        .restControl;
+
+    let restShutdownAccepted =
+      false;
+
+    if (restControl) {
+      try {
+        await restControl
+          .save();
+
+        this.dependencies
+          .audit
+          .record({
+            category:
+              "palworld-lifecycle",
+
+            action:
+              "rest-save-succeeded",
+
+            message:
+              "Palworld world save completed before shutdown."
+          });
+      } catch (
+        error
+      ) {
+        this.dependencies
+          .audit
+          .record({
+            category:
+              "palworld-lifecycle",
+
+            action:
+              "rest-save-failed",
+
+            severity:
+              "warning",
+
+            message:
+              "Palworld REST save failed; shutdown will continue.",
+
+            metadata: {
+              errorType:
+                error instanceof Error
+                  ? error.name
+                  : typeof error
+            }
+          });
+      }
+
+      try {
+        await restControl
+          .shutdown(
+            this.dependencies
+              .restShutdownWaitSeconds,
+
+            "Server shutdown requested by King's Palworld Manager."
+          );
+
+        restShutdownAccepted =
+          true;
+
+        this.dependencies
+          .audit
+          .record({
+            category:
+              "palworld-lifecycle",
+
+            action:
+              "rest-shutdown-accepted",
+
+            message:
+              "Palworld accepted the graceful REST shutdown request.",
+
+            metadata: {
+              waitSeconds:
+                this.dependencies
+                  .restShutdownWaitSeconds
+            }
+          });
+      } catch (
+        error
+      ) {
+        this.dependencies
+          .audit
+          .record({
+            category:
+              "palworld-lifecycle",
+
+            action:
+              "rest-shutdown-failed",
+
+            severity:
+              "warning",
+
+            message:
+              "Palworld graceful REST shutdown was unavailable; using process fallback.",
+
+            metadata: {
+              errorType:
+                error instanceof Error
+                  ? error.name
+                  : typeof error
+            }
+          });
+      }
+    }
+
+    if (restShutdownAccepted) {
+      const restGraceTimeoutMs =
+        Math.min(
+          this.dependencies
+            .stopTimeoutMs,
+
+          Math.max(
+            (
+              this.dependencies
+                .restShutdownWaitSeconds +
+              5
+            ) * 1000,
+
+            5000
+          )
+        );
+
+      const exitedFromRest =
+        await this.waitForExit(
+          child,
+          restGraceTimeoutMs
+        );
+
+      if (exitedFromRest) {
+        return this.dependencies
+          .runtime
+          .snapshot();
+      }
+
+      this.dependencies
+        .audit
+        .record({
+          category:
+            "palworld-lifecycle",
+
+          action:
+            "rest-shutdown-timeout",
+
+          severity:
+            "warning",
+
+          message:
+            "Palworld did not exit after accepting the REST shutdown request.",
+
+          metadata: {
+            timeoutMs:
+              restGraceTimeoutMs
+          }
+        });
+    }
+
+    this.dependencies
+      .audit
+      .record({
+        category:
+          "palworld-lifecycle",
+
+        action:
+          "signal-fallback",
+
+        severity:
+          restShutdownAccepted
+            ? "warning"
+            : "info",
+
+        message:
+          "Stopping Palworld using SIGTERM process fallback.",
 
         metadata: {
           pid:

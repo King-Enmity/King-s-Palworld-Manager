@@ -91,26 +91,6 @@ async function main():
       audit
     );
 
-  const palworldLifecycle =
-    new PalworldLifecycleService({
-      runtime:
-        palworldRuntime,
-
-      audit,
-
-      processSpec:
-        createPalworldProcessSpec(
-          config
-        ),
-
-      stopTimeoutMs:
-        config
-          .palworldStopTimeoutMs
-    });
-
-  palworldLifecycle
-    .initialize();
-
   const palworldRestConfiguration =
     new PalworldRestConfigurationProvider(
       config
@@ -127,6 +107,33 @@ async function main():
       palworldRestClient,
       audit
     );
+
+  const palworldLifecycle =
+    new PalworldLifecycleService({
+      runtime:
+        palworldRuntime,
+
+      audit,
+
+      processSpec:
+        createPalworldProcessSpec(
+          config
+        ),
+
+      restControl:
+        palworldRest,
+
+      restShutdownWaitSeconds:
+        config
+          .palworldRestShutdownWaitSeconds,
+
+      stopTimeoutMs:
+        config
+          .palworldStopTimeoutMs
+    });
+
+  palworldLifecycle
+    .initialize();
 
   const systemService =
     new SystemService({

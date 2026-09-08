@@ -62,3 +62,17 @@ SQLite database.
 
 REST-assisted save/shutdown will be added in the REST integration
 layer. Process ownership does not depend on REST being available.
+
+## REST-assisted graceful shutdown
+
+Normal Manager stop and restart operations use this sequence:
+
+1. Request a world save through Palworld REST.
+2. Request the official REST shutdown endpoint.
+3. Wait for the owned Palworld process to exit.
+4. Fall back to SIGTERM if REST is unavailable or does not stop the process.
+5. Use SIGKILL only after the normal process stop timeout is exceeded.
+
+REST save or shutdown failures do not prevent an administrator from
+stopping the server. They are recorded as audit warnings before the
+process fallback is used.

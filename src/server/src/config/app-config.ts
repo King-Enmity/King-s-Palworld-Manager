@@ -68,6 +68,14 @@ const EnvironmentSchema = z.object({
       .max(30000)
       .default(5000),
 
+  KPM_PALWORLD_REST_SHUTDOWN_WAIT_SECONDS:
+    z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(60)
+      .default(1),
+
   KPM_PALWORLD_STOP_TIMEOUT_MS:
     z.coerce
       .number()
@@ -92,6 +100,7 @@ export interface AppConfig {
 
   palworldRestUsername: string;
   palworldRestTimeoutMs: number;
+  palworldRestShutdownWaitSeconds: number;
 
   palworldStopTimeoutMs: number;
 }
@@ -150,6 +159,9 @@ export function loadAppConfig(
 
     palworldRestTimeoutMs:
       parsed.KPM_PALWORLD_REST_TIMEOUT_MS,
+
+    palworldRestShutdownWaitSeconds:
+      parsed.KPM_PALWORLD_REST_SHUTDOWN_WAIT_SECONDS,
 
     palworldStopTimeoutMs:
       parsed.KPM_PALWORLD_STOP_TIMEOUT_MS

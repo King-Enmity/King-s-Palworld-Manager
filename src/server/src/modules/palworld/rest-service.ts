@@ -139,4 +139,44 @@ export class PalworldRestService {
         true
     };
   }
+
+  public async shutdown(
+    waittime: number,
+    message?: string
+  ): Promise<{
+    shutdown: true;
+    waittime: number;
+  }> {
+    await this.client
+      .shutdown(
+        waittime,
+        message
+      );
+
+    this.audit.record({
+      category:
+        "palworld-rest",
+
+      action:
+        "shutdown",
+
+      message:
+        "Palworld graceful shutdown requested.",
+
+      metadata: {
+        waittime,
+
+        messageLength:
+          message?.length ??
+          0
+      }
+    });
+
+    return {
+      shutdown:
+        true,
+
+      waittime
+    };
+  }
 }
