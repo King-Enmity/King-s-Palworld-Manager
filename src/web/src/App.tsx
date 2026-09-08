@@ -29,6 +29,10 @@ import {
   ServerPage
 } from "./ServerPage";
 
+import {
+  PlayersPage
+} from "./PlayersPage";
+
 type Health =
   | "offline"
   | "transitioning"
@@ -1240,7 +1244,17 @@ export default function App() {
                     onRefresh={loadLive}
                   />
                 )
-              : renderPlaceholder()
+              : page ===
+                  "Players"
+                ? (
+                    <PlayersPage
+                      apiError={apiError}
+                      live={live}
+                      loading={loading}
+                      onRefresh={loadLive}
+                    />
+                  )
+                : renderPlaceholder()
         }
       </main>
     </div>

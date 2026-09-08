@@ -1331,3 +1331,179 @@ td strong {
     flex-direction: column;
   }
 }
+.players-summary-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 14px;
+  margin-bottom: 15px;
+}
+
+.players-summary-grid article {
+  padding: 18px;
+  border: 1px solid #202a40;
+  border-radius: 14px;
+  background: rgba(15, 22, 38, 0.82);
+}
+
+.players-summary-grid span,
+.players-summary-grid strong {
+  display: block;
+}
+
+.players-summary-grid span {
+  margin-bottom: 7px;
+  color: #758198;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.players-summary-grid strong {
+  color: #e5eafe;
+  font-size: 17px;
+  text-transform: capitalize;
+}
+
+.players-admin-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.unban-row {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+  gap: 9px;
+}
+
+.text-input {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #2a3650;
+  border-radius: 9px;
+  outline: none;
+  color: #e5eaff;
+  background: #0c1322;
+  font: inherit;
+  font-size: 12px;
+}
+
+.text-input:focus {
+  border-color: #5268d9;
+  box-shadow:
+    0 0 0 3px
+    rgba(82, 104, 217, 0.12);
+}
+
+.text-input::placeholder {
+  color: #59667e;
+}
+
+.players-management-panel {
+  margin-top: 0;
+}
+
+.player-name-cell strong,
+.player-name-cell span {
+  display: block;
+}
+
+.player-name-cell strong {
+  margin-bottom: 3px;
+}
+
+.player-name-cell span {
+  color: #6f7c93;
+  font-size: 10px;
+}
+
+.user-id-code {
+  display: inline-block;
+  max-width: 210px;
+  overflow: hidden;
+  padding: 4px 6px;
+  border: 1px solid #28334a;
+  border-radius: 6px;
+  color: #9daccc;
+  background: #101827;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-action-row {
+  display: flex;
+  gap: 6px;
+}
+
+.table-action-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid #34415d;
+  border-radius: 7px;
+  color: #c2cce0;
+  background: #172135;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.table-action-button:hover:not(:disabled) {
+  background: #1d2941;
+}
+
+.kick-button {
+  border-color:
+    rgba(
+      245,
+      184,
+      91,
+      0.3
+    );
+  color: #f2cf96;
+}
+
+.ban-button {
+  border-color:
+    rgba(
+      255,
+      101,
+      116,
+      0.32
+    );
+  color: #ffc0c6;
+}
+
+.player-empty-state {
+  min-height: 240px;
+}
+
+@media (max-width: 900px) {
+  .players-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .players-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .unban-row {
+    grid-template-columns: 1fr;
+  }
+}
