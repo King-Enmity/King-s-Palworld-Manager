@@ -48,6 +48,64 @@ const migrations: readonly Migration[] = [
       CREATE INDEX idx_audit_events_category
         ON audit_events(category);
     `
+  },
+  {
+    version: 2,
+    name: "scheduler_jobs",
+    sql: `
+      CREATE TABLE scheduler_jobs (
+        id TEXT PRIMARY KEY,
+
+        name TEXT NOT NULL,
+
+        action_type TEXT NOT NULL
+          CHECK (
+            action_type IN (
+              'start',
+              'stop',
+              'restart',
+              'save',
+              'announce',
+              'settings'
+            )
+          ),
+
+        payload_json TEXT NOT NULL,
+
+        scheduled_for TEXT NOT NULL,
+
+        status TEXT NOT NULL
+          CHECK (
+            status IN (
+              'pending',
+              'running',
+              'completed',
+              'failed',
+              'cancelled'
+            )
+          ),
+
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+
+        started_at TEXT,
+        completed_at TEXT,
+        cancelled_at TEXT,
+
+        last_error TEXT
+      ) STRICT;
+
+      CREATE INDEX idx_scheduler_jobs_scheduled_for
+        ON scheduler_jobs(
+          status,
+          scheduled_for
+        );
+
+      CREATE INDEX idx_scheduler_jobs_created_at
+        ON scheduler_jobs(
+          created_at DESC
+        );
+    `
   }
 ];
 

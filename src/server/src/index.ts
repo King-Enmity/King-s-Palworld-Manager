@@ -67,6 +67,14 @@ import {
 } from "./modules/system/system-service.js";
 
 import {
+  SchedulerRepository
+} from "./modules/scheduler/scheduler-repository.js";
+
+import {
+  SchedulerService
+} from "./modules/scheduler/scheduler-service.js";
+
+import {
   SteamMetadataService
 } from "./modules/steam/steam-metadata-service.js";
 
@@ -173,6 +181,30 @@ async function main():
       audit
     );
 
+  const schedulerRepository =
+    new SchedulerRepository(
+      database
+    );
+
+  const scheduler =
+    new SchedulerService({
+      repository:
+        schedulerRepository,
+
+      audit,
+
+      lifecycle:
+        palworldLifecycle,
+
+      rest:
+        palworldRest,
+
+      settingsWriter:
+        palworldSettingsWriter
+    });
+
+  scheduler.start();
+
   const steamMetadata =
     new SteamMetadataService(
       config
@@ -204,7 +236,9 @@ async function main():
       saveExports,
       saveImports,
 
-      steamMetadata
+      steamMetadata,
+
+      scheduler
     });
 
   audit.record({
@@ -249,6 +283,8 @@ async function main():
         message:
           `Manager stopping after ${signal}.`
       });
+
+      scheduler.stop();
 
       try {
         await palworldLifecycle

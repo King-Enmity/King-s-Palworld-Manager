@@ -64,6 +64,14 @@ import type {
 } from "./modules/system/system-service.js";
 
 import {
+  registerSchedulerRoutes
+} from "./modules/scheduler/scheduler-routes.js";
+
+import type {
+  SchedulerService
+} from "./modules/scheduler/scheduler-service.js";
+
+import {
   registerSteamRoutes
 } from "./modules/steam/steam-routes.js";
 
@@ -148,6 +156,9 @@ export interface AppDependencies {
 
   steamMetadata:
     SteamMetadataService;
+
+  scheduler:
+    SchedulerService;
 }
 
 export function buildApp(
@@ -256,6 +267,11 @@ export function buildApp(
   registerSteamRoutes(
     app,
     dependencies.steamMetadata
+  );
+
+  registerSchedulerRoutes(
+    app,
+    dependencies.scheduler
   );
 
   app.get(
