@@ -20,6 +20,50 @@ function Add-Detail([string]$Message) {
     $details.Add($Message)
 }
 
+function Invoke-NativeCommand {
+    param(
+        [Parameter(Mandatory)]
+        [scriptblock]$Command,
+
+        [Parameter(Mandatory)]
+        [string]$Label
+    )
+
+    $oldErrorActionPreference = $ErrorActionPreference
+    $nativePreferenceExists = $null -ne (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue)
+    if ($nativePreferenceExists) {
+        $oldNativePreference = $PSNativeCommandUseErrorActionPreference
+    }
+
+    try {
+        # Git and Docker legitimately write progress/status messages to stderr.
+        # Treat their exit codes as authoritative rather than turning stderr into
+        # a terminating PowerShell error when the caller has EAP=Stop.
+        $ErrorActionPreference = 'Continue'
+        if ($nativePreferenceExists) {
+            $PSNativeCommandUseErrorActionPreference = $false
+        }
+
+        $output = & $Command 2>&1
+        $nativeExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldErrorActionPreference
+        if ($nativePreferenceExists) {
+            $PSNativeCommandUseErrorActionPreference = $oldNativePreference
+        }
+    }
+
+    foreach ($line in @($output)) {
+        Add-Detail "${Label}: $line"
+    }
+
+    return [pscustomobject]@{
+        ExitCode = $nativeExitCode
+        Output   = @($output)
+    }
+}
+
 try {
     foreach ($command in @('git', 'docker')) {
         if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
@@ -46,10 +90,9 @@ try {
 
         Push-Location $ProjectPath
         try {
-            $cloneOutput = git clone $Repository . 2>&1
-            $cloneOutput | ForEach-Object { Add-Detail "git clone: $_" }
-            if ($LASTEXITCODE -ne 0) {
-                throw 'Repository clone failed.'
+            $clone = Invoke-NativeCommand -Label 'git clone' -Command { git clone $Repository . }
+            if ($clone.ExitCode -ne 0) {
+                throw "Repository clone failed with exit code $($clone.ExitCode)."
             }
         }
         finally {
@@ -64,25 +107,27 @@ try {
 
     Push-Location $ProjectPath
     try {
-        $fetchOutput = git fetch --all --prune 2>&1
-        $fetchOutput | ForEach-Object { Add-Detail "git fetch: $_" }
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Git fetch failed.'
+        $fetch = Invoke-NativeCommand -Label 'git fetch' -Command { git fetch --all --prune }
+        if ($fetch.ExitCode -ne 0) {
+            throw "Git fetch failed with exit code $($fetch.ExitCode)."
         }
 
-        $checkoutOutput = git checkout $Branch 2>&1
-        $checkoutOutput | ForEach-Object { Add-Detail "git checkout: $_" }
-        if ($LASTEXITCODE -ne 0) {
-            throw "Could not check out branch: $Branch"
+        $checkout = Invoke-NativeCommand -Label 'git checkout' -Command { git checkout $Branch }
+        if ($checkout.ExitCode -ne 0) {
+            throw "Could not check out branch '$Branch' (exit code $($checkout.ExitCode))."
         }
 
-        $pullOutput = git pull --ff-only 2>&1
-        $pullOutput | ForEach-Object { Add-Detail "git pull: $_" }
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Git pull failed.'
+        $pull = Invoke-NativeCommand -Label 'git pull' -Command { git pull --ff-only }
+        if ($pull.ExitCode -ne 0) {
+            throw "Git pull failed with exit code $($pull.ExitCode)."
         }
 
-        Add-Result "OK  Branch: $(git branch --show-current)"
+        $branchResult = Invoke-NativeCommand -Label 'git branch' -Command { git branch --show-current }
+        if ($branchResult.ExitCode -ne 0) {
+            throw 'Could not determine the active Git branch.'
+        }
+        $activeBranch = ($branchResult.Output | Select-Object -First 1).ToString().Trim()
+        Add-Result "OK  Branch: $activeBranch"
 
         $requiredFiles = @(
             'README.md',
@@ -101,10 +146,11 @@ try {
         }
         Add-Result 'OK  Repository structure verified'
 
-        $dockerVersion = docker version --format '{{.Server.Version}}' 2>&1
-        if ($LASTEXITCODE -ne 0 -or -not $dockerVersion) {
+        $docker = Invoke-NativeCommand -Label 'docker version' -Command { docker version --format '{{.Server.Version}}' }
+        if ($docker.ExitCode -ne 0 -or $docker.Output.Count -eq 0) {
             throw 'Docker is installed but the Docker engine is not reachable.'
         }
+        $dockerVersion = ($docker.Output | Select-Object -First 1).ToString().Trim()
         Add-Result "OK  Docker Engine: $dockerVersion"
     }
     finally {
