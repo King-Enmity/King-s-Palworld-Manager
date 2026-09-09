@@ -5,6 +5,7 @@ import {
   CircleAlert,
   Cpu,
   DatabaseBackup,
+  FileText,
   Gamepad2,
   Map,
   RefreshCw,
@@ -49,6 +50,10 @@ import {
 import {
   WebhooksPage
 } from "./WebhooksPage";
+
+import {
+  LogsPage
+} from "./LogsPage";
 
 type Health =
   | "offline"
@@ -137,6 +142,54 @@ interface SteamBrandingMetadata {
   errors: string[];
 }
 
+type DashboardLogSeverity =
+  | "debug"
+  | "info"
+  | "warning"
+  | "error";
+
+type DashboardLogSource =
+  | "manager"
+  | "palworld";
+
+interface DashboardLogEntry {
+  id: string;
+  occurredAt: string;
+  source: DashboardLogSource;
+  severity: DashboardLogSeverity;
+  category: string;
+  action: string;
+  message: string;
+}
+
+interface DashboardLogSummary {
+  counts: {
+    total: number;
+    debug: number;
+    info: number;
+    warning: number;
+    error: number;
+  };
+
+  bySource: {
+    manager: number;
+    palworld: number;
+  };
+
+  recentSignificant:
+    DashboardLogEntry[];
+}
+
+interface LogNavigationPreset {
+  severity:
+    "all" |
+    DashboardLogSeverity;
+
+  source:
+    "all" |
+    DashboardLogSource;
+}
+
 interface LiveSnapshot {
   observedAt: string;
 
@@ -178,6 +231,7 @@ type Page =
   | "Players"
   | "Calendar"
   | "Webhooks"
+  | "Logs"
   | "Backups & Saves"
   | "Settings";
 
@@ -230,6 +284,14 @@ const navigation:
 
       icon:
         Webhook
+    },
+
+    {
+      label:
+        "Logs",
+
+      icon:
+        FileText
     },
 
     {
@@ -388,6 +450,31 @@ export default function App() {
 
 
   const [
+    logSummary,
+    setLogSummary
+  ] =
+    useState<
+      DashboardLogSummary |
+      null
+    >(
+      null
+    );
+
+  const [
+    logPreset,
+    setLogPreset
+  ] =
+    useState<
+      LogNavigationPreset
+    >({
+      severity:
+        "all",
+
+      source:
+        "all"
+    });
+
+  const [
     branding,
     setBranding
   ] =
@@ -454,6 +541,56 @@ export default function App() {
       },
       []
     );
+
+  const loadLogSummary =
+    useCallback(
+      async () => {
+        try {
+          const response =
+            await fetch(
+              "/api/v1/logs/summary?hours=24",
+              {
+                headers: {
+                  Accept:
+                    "application/json"
+                }
+              }
+            );
+
+          if (
+            !response.ok
+          ) {
+            return;
+          }
+
+          const payload =
+            await response
+              .json() as
+                DashboardLogSummary;
+
+          setLogSummary(
+            payload
+          );
+        } catch {
+          // Overview remains usable if log summary data is unavailable.
+        }
+      },
+      []
+    );
+
+  const openLogs =
+    (
+      preset:
+        LogNavigationPreset
+    ): void => {
+      setLogPreset(
+        preset
+      );
+
+      setPage(
+        "Logs"
+      );
+    };
 
   useEffect(
     () => {
@@ -522,6 +659,29 @@ export default function App() {
     },
     [
       loadLive
+    ]
+  );
+
+  useEffect(
+    () => {
+      void loadLogSummary();
+
+      const timer =
+        window.setInterval(
+          () => {
+            void loadLogSummary();
+          },
+          10_000
+        );
+
+      return () => {
+        window.clearInterval(
+          timer
+        );
+      };
+    },
+    [
+      loadLogSummary
     ]
   );
 
@@ -604,6 +764,7 @@ export default function App() {
               disabled={loading}
               onClick={() => {
                 void loadLive();
+                void loadLogSummary();
               }}
               type="button"
             >
@@ -956,6 +1117,270 @@ export default function App() {
               }
             </small>
           </article>
+        </section>
+
+        <section className="operations-health-section">
+          <div className="panel-heading operations-health-heading">
+            <div>
+              <p className="eyebrow">
+                OPERATIONS
+              </p>
+
+              <h3>
+                Manager health
+              </h3>
+            </div>
+
+            <button
+              className="overview-view-logs"
+              onClick={() => {
+                openLogs({
+                  severity:
+                    "all",
+
+                  source:
+                    "all"
+                });
+              }}
+              type="button"
+            >
+              View all logs
+            </button>
+          </div>
+
+          <div className="operations-health-grid">
+            <button
+              className="operations-health-card operations-warning-card"
+              onClick={() => {
+                openLogs({
+                  severity:
+                    "warning",
+
+                  source:
+                    "all"
+                });
+              }}
+              type="button"
+            >
+              <CircleAlert
+                size={18}
+              />
+
+              <span>
+                Warnings
+              </span>
+
+              <strong>
+                {
+                  logSummary
+                    ?.counts
+                    .warning ??
+                  0
+                }
+              </strong>
+
+              <small>
+                Last 24 hours
+              </small>
+            </button>
+
+            <button
+              className="operations-health-card operations-error-card"
+              onClick={() => {
+                openLogs({
+                  severity:
+                    "error",
+
+                  source:
+                    "all"
+                });
+              }}
+              type="button"
+            >
+              <CircleAlert
+                size={18}
+              />
+
+              <span>
+                Errors
+              </span>
+
+              <strong>
+                {
+                  logSummary
+                    ?.counts
+                    .error ??
+                  0
+                }
+              </strong>
+
+              <small>
+                Last 24 hours
+              </small>
+            </button>
+
+            <button
+              className="operations-health-card"
+              onClick={() => {
+                openLogs({
+                  severity:
+                    "all",
+
+                  source:
+                    "manager"
+                });
+              }}
+              type="button"
+            >
+              <Activity
+                size={18}
+              />
+
+              <span>
+                Manager events
+              </span>
+
+              <strong>
+                {
+                  logSummary
+                    ?.bySource
+                    .manager ??
+                  0
+                }
+              </strong>
+
+              <small>
+                Last 24 hours
+              </small>
+            </button>
+
+            <button
+              className="operations-health-card"
+              onClick={() => {
+                openLogs({
+                  severity:
+                    "all",
+
+                  source:
+                    "palworld"
+                });
+              }}
+              type="button"
+            >
+              <Server
+                size={18}
+              />
+
+              <span>
+                Palworld console
+              </span>
+
+              <strong>
+                {
+                  logSummary
+                    ?.bySource
+                    .palworld ??
+                  0
+                }
+              </strong>
+
+              <small>
+                Last 24 hours
+              </small>
+            </button>
+          </div>
+
+          <div className="recent-operations-panel">
+            <div className="recent-operations-heading">
+              <strong>
+                Recent warnings & errors
+              </strong>
+
+              <span>
+                Latest significant Manager and Palworld events
+              </span>
+            </div>
+
+            {
+              logSummary &&
+              logSummary
+                .recentSignificant
+                .length >
+                0
+                ? (
+                    <div className="recent-operations-list">
+                      {
+                        logSummary
+                          .recentSignificant
+                          .map(
+                            entry => (
+                              <button
+                                className="recent-operation-row"
+                                key={
+                                  entry.id
+                                }
+                                onClick={() => {
+                                  openLogs({
+                                    severity:
+                                      entry.severity,
+
+                                    source:
+                                      entry.source
+                                  });
+                                }}
+                                type="button"
+                              >
+                                <span
+                                  className={
+                                    `recent-operation-severity recent-operation-${entry.severity}`
+                                  }
+                                >
+                                  {
+                                    entry.severity
+                                  }
+                                </span>
+
+                                <div>
+                                  <strong>
+                                    {
+                                      entry.message
+                                    }
+                                  </strong>
+
+                                  <span>
+                                    {
+                                      entry.source ===
+                                        "palworld"
+                                        ? "Palworld"
+                                        : "Manager"
+                                    }
+                                    {" · "}
+                                    {
+                                      entry.category
+                                    }
+                                  </span>
+                                </div>
+
+                                <time>
+                                  {
+                                    new Date(
+                                      entry.occurredAt
+                                    ).toLocaleTimeString()
+                                  }
+                                </time>
+                              </button>
+                            )
+                          )
+                      }
+                    </div>
+                  )
+                : (
+                    <div className="recent-operations-empty">
+                      No warnings or errors recorded in the last 24 hours.
+                    </div>
+                  )
+            }
+          </div>
         </section>
 
         <section className="dashboard-grid">
@@ -1374,11 +1799,24 @@ export default function App() {
                   key={
                     item.label
                   }
-                  onClick={() =>
+                  onClick={() => {
+                    if (
+                      item.label ===
+                      "Logs"
+                    ) {
+                      setLogPreset({
+                        severity:
+                          "all",
+
+                        source:
+                          "all"
+                      });
+                    }
+
                     setPage(
                       item.label
-                    )
-                  }
+                    );
+                  }}
                   type="button"
                 >
                   <Icon
@@ -1471,7 +1909,21 @@ export default function App() {
                         ? (
                             <WebhooksPage />
                           )
-                        : renderPlaceholder()
+                        : page ===
+                            "Logs"
+                          ? (
+                              <LogsPage
+                                initialSeverity={
+                                  logPreset
+                                    .severity
+                                }
+                                initialSource={
+                                  logPreset
+                                    .source
+                                }
+                              />
+                            )
+                          : renderPlaceholder()
         }
       </main>
     </div>
