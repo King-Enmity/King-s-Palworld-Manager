@@ -4977,3 +4977,410 @@ td strong {
       1fr;
   }
 }
+/* =========================================================
+   Save Tools V1
+   ========================================================= */
+
+.save-runtime-banner {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid;
+  border-radius: 9px;
+}
+
+.save-runtime-banner > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.save-runtime-banner strong,
+.save-runtime-banner span {
+  display: block;
+}
+
+.save-runtime-banner strong {
+  font-size: 9px;
+}
+
+.save-runtime-banner span {
+  margin-top: 3px;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.save-runtime-stopped {
+  border-color: rgba(58, 133, 102, 0.4);
+  color: #8ac5a8;
+  background: rgba(37, 103, 76, 0.08);
+}
+
+.save-runtime-blocked {
+  border-color: rgba(181, 103, 58, 0.42);
+  color: #d5a277;
+  background: rgba(141, 78, 37, 0.08);
+}
+
+.save-tools-layout {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.65fr)
+    minmax(330px, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.save-tools-side-column {
+  display: grid;
+  gap: 14px;
+}
+
+.save-import-center {
+  position: sticky;
+  top: 18px;
+}
+
+.import-target-panel {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid #26344c;
+}
+
+.import-target-heading strong,
+.import-target-heading span {
+  display: block;
+}
+
+.import-target-heading strong {
+  color: #d3dbea;
+  font-size: 9px;
+}
+
+.import-target-heading span {
+  margin-top: 3px;
+  color: #66758c;
+  font-size: 7px;
+}
+
+.import-target-fields {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.import-target-fields label {
+  display: grid;
+  gap: 5px;
+}
+
+.import-target-fields label > span {
+  color: #697991;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.import-target-fields input {
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid #2a3952;
+  border-radius: 7px;
+  outline: none;
+  color: #cad4e5;
+  background: #0d1625;
+  font: inherit;
+  font-size: 9px;
+}
+
+.import-target-fields input:focus {
+  border-color: #586fd7;
+}
+
+.import-target-fields input:disabled {
+  color: #718099;
+  background: #0a121f;
+}
+
+.matching-worlds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.matching-worlds > span {
+  width: 100%;
+  color: #64738a;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.matching-worlds > strong {
+  color: #b27d72;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.matching-world {
+  padding: 5px 7px;
+  border: 1px solid #31405b;
+  border-radius: 6px;
+  color: #8594ad;
+  background: #111b2d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.matching-world:hover,
+.matching-world.active {
+  border-color: #6074d2;
+  color: #bbc6ff;
+  background: rgba(73, 90, 169, 0.14);
+}
+
+.save-destructive-warning {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid rgba(173, 97, 63, 0.38);
+  border-radius: 7px;
+  color: #d29272;
+  background: rgba(135, 67, 38, 0.08);
+}
+
+.save-destructive-warning > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.save-destructive-warning strong,
+.save-destructive-warning span {
+  display: block;
+}
+
+.save-destructive-warning strong {
+  font-size: 8px;
+}
+
+.save-destructive-warning span {
+  margin-top: 3px;
+  color: #9d7869;
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.save-apply-import-button {
+  margin-top: 9px;
+}
+
+.rollback-panel {
+  margin-top: 14px;
+}
+
+.rollback-explanation {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  padding: 9px;
+  border: 1px solid #28364d;
+  border-radius: 8px;
+  color: #8292aa;
+  background: rgba(12, 20, 33, 0.7);
+}
+
+.rollback-explanation > svg {
+  flex: 0 0 auto;
+}
+
+.rollback-explanation strong,
+.rollback-explanation span {
+  display: block;
+}
+
+.rollback-explanation strong {
+  color: #aeb9cb;
+  font-size: 8px;
+}
+
+.rollback-explanation span {
+  margin-top: 3px;
+  color: #647289;
+  font-size: 7px;
+}
+
+.rollback-list {
+  display: grid;
+  gap: 7px;
+}
+
+.rollback-card {
+  display: grid;
+  grid-template-columns:
+    auto
+    minmax(0, 1fr)
+    auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #26344b;
+  border-radius: 9px;
+  background: #0f1828;
+}
+
+.rollback-card-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #32415d;
+  border-radius: 8px;
+  color: #8495c8;
+  background: #151f33;
+}
+
+.rollback-card-main {
+  min-width: 0;
+}
+
+.rollback-card-heading {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.rollback-card-heading strong,
+.rollback-card-heading span {
+  display: block;
+}
+
+.rollback-card-heading strong {
+  color: #d0d8e7;
+  font-size: 9px;
+}
+
+.rollback-card-heading span {
+  margin-top: 2px;
+  color: #6d7c94;
+  font-size: 8px;
+}
+
+.rollback-card-heading code {
+  overflow: hidden;
+  max-width: 260px;
+  color: #53647d;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rollback-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  margin-top: 6px;
+  color: #63728a;
+  font-size: 7px;
+}
+
+.rollback-restored-badge {
+  color: #78aa91;
+}
+
+.rollback-new-player-note {
+  margin-top: 6px;
+  color: #9b8469;
+  font-size: 7px;
+}
+
+.rollback-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.rollback-actions .control-button {
+  white-space: nowrap;
+}
+
+.rollback-delete-button {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid rgba(151, 64, 71, 0.45);
+  border-radius: 6px;
+  color: #c57980;
+  background: rgba(118, 44, 50, 0.1);
+  cursor: pointer;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.rollback-delete-button:hover:not(:disabled) {
+  border-color: #b75d66;
+  color: #e5949a;
+}
+
+.rollback-delete-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rollback-empty-state {
+  min-height: 135px;
+}
+
+@media (max-width: 1100px) {
+  .save-tools-layout {
+    grid-template-columns:
+      1fr;
+  }
+
+  .save-import-center {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .import-target-fields {
+    grid-template-columns:
+      1fr;
+  }
+
+  .rollback-card {
+    grid-template-columns:
+      auto
+      minmax(0, 1fr);
+  }
+
+  .rollback-actions {
+    grid-column:
+      1 / -1;
+    justify-content: flex-end;
+  }
+
+  .rollback-card-heading {
+    display: grid;
+  }
+
+  .rollback-card-heading code {
+    max-width: 100%;
+  }
+}

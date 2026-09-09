@@ -1,5 +1,6 @@
 import {
   Archive,
+  ArchiveRestore,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -10,7 +11,10 @@ import {
   FileCheck2,
   HardDrive,
   RefreshCw,
+  RotateCcw,
+  ShieldAlert,
   ShieldCheck,
+  Trash2,
   Upload,
   Users
 } from "lucide-react";
@@ -18,50 +22,69 @@ import {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState
 } from "react";
 
 interface SavePlayer {
-  playerId: string;
+  playerId:
+    string;
 
-  fileName: string;
+  fileName:
+    string;
 
-  sizeBytes: number;
+  sizeBytes:
+    number;
 
-  modifiedAt: string;
+  modifiedAt:
+    string;
 }
 
 interface SaveWorld {
-  slotId: string;
-  worldId: string;
+  slotId:
+    string;
 
-  fileCount: number;
-  totalBytes: number;
+  worldId:
+    string;
+
+  fileCount:
+    number;
+
+  totalBytes:
+    number;
 
   modifiedAt:
     string |
     null;
 
-  playerCount: number;
+  playerCount:
+    number;
 
   players:
     SavePlayer[];
 
-  hasLevelSav: boolean;
-  hasLevelMetaSav: boolean;
-  hasWorldOptionSav: boolean;
+  hasLevelSav:
+    boolean;
+
+  hasLevelMetaSav:
+    boolean;
+
+  hasWorldOptionSav:
+    boolean;
 
   backupDirectoryPresent:
     boolean;
 
-  safe: boolean;
+  safe:
+    boolean;
 
   warnings:
     string[];
 }
 
 interface SaveInventory {
-  configured: boolean;
+  configured:
+    boolean;
 
   saveGamesPresent:
     boolean;
@@ -70,9 +93,14 @@ interface SaveInventory {
     SaveWorld[];
 
   summary: {
-    worldCount: number;
-    playerCount: number;
-    totalBytes: number;
+    worldCount:
+      number;
+
+    playerCount:
+      number;
+
+    totalBytes:
+      number;
   };
 
   warnings:
@@ -80,19 +108,27 @@ interface SaveInventory {
 }
 
 interface ImportPreview {
-  operationId: string;
+  operationId:
+    string;
 
   status:
     "ready";
 
-  createdAt: string;
-  expiresAt: string;
+  createdAt:
+    string;
 
-  originalFileName: string;
+  expiresAt:
+    string;
+
+  originalFileName:
+    string;
 
   archive: {
-    sizeBytes: number;
-    sha256: string;
+    sizeBytes:
+      number;
+
+    sha256:
+      string;
   };
 
   source: {
@@ -100,8 +136,11 @@ interface ImportPreview {
       "world" |
       "player";
 
-    slotId: string;
-    worldId: string;
+    slotId:
+      string;
+
+    worldId:
+      string;
 
     playerId:
       string |
@@ -115,23 +154,32 @@ interface ImportPreview {
     schemaVersion:
       1;
 
-    createdAt: string;
+    createdAt:
+      string;
 
-    managerVersion: string;
+    managerVersion:
+      string;
 
     palworldVersion:
       string |
       null;
 
-    fileCount: number;
-    totalBytes: number;
+    fileCount:
+      number;
+
+    totalBytes:
+      number;
   };
 
   validation: {
-    archiveEntryCount: number;
-    archiveFileCount: number;
+    archiveEntryCount:
+      number;
 
-    expandedBytes: number;
+    archiveFileCount:
+      number;
+
+    expandedBytes:
+      number;
 
     manifestFilesMatched:
       true;
@@ -145,6 +193,86 @@ interface ImportPreview {
 
   warnings:
     string[];
+}
+
+interface RollbackSnapshot {
+  id:
+    string;
+
+  kind:
+    "world" |
+    "player";
+
+  createdAt:
+    string;
+
+  lastRestoredAt:
+    string |
+    null;
+
+  target: {
+    slotId:
+      string;
+
+    worldId:
+      string;
+
+    playerId:
+      string |
+      null;
+  };
+
+  sourceExisted:
+    boolean;
+
+  fileCount:
+    number;
+
+  totalBytes:
+    number;
+}
+
+interface RollbackResponse {
+  rollbacks:
+    RollbackSnapshot[];
+}
+
+interface ApplyResult {
+  operationId:
+    string;
+
+  kind:
+    "world" |
+    "player";
+
+  applied:
+    true;
+
+  appliedAt:
+    string;
+
+  target: {
+    slotId:
+      string;
+
+    worldId:
+      string;
+
+    playerId:
+      string |
+      null;
+  };
+
+  rollback:
+    RollbackSnapshot;
+
+  validation: {
+    filesVerified:
+      true;
+
+    hashesVerified:
+      true;
+  };
 }
 
 interface SavesPageProps {
@@ -179,7 +307,8 @@ function formatBytes(
     !Number.isFinite(
       value
     ) ||
-    value < 0
+    value <
+      0
   ) {
     return "—";
   }
@@ -220,9 +349,11 @@ function formatBytes(
   }
 
   return `${size.toFixed(
-    size >= 100
+    size >=
+      100
       ? 0
-      : size >= 10
+      : size >=
+          10
         ? 1
         : 2
   )} ${units[unitIndex]}`;
@@ -270,12 +401,13 @@ async function errorMessage(
       JSON.parse(
         text
       ) as {
-        message?: unknown;
+        message?:
+          unknown;
       };
 
     if (
       typeof parsed.message ===
-        "string"
+      "string"
     ) {
       return parsed.message;
     }
@@ -326,6 +458,16 @@ export function SavesPage({
       null
     >(
       null
+    );
+
+  const [
+    rollbacks,
+    setRollbacks
+  ] =
+    useState<
+      RollbackSnapshot[]
+    >(
+      []
     );
 
   const [
@@ -402,40 +544,104 @@ export function SavesPage({
       null
     );
 
-  const loadInventory =
+  const [
+    targetSlotId,
+    setTargetSlotId
+  ] =
+    useState(
+      ""
+    );
+
+  const [
+    targetWorldId,
+    setTargetWorldId
+  ] =
+    useState(
+      ""
+    );
+
+  const serverStopped =
+    runtimeStatus ===
+    "stopped";
+
+  const loadData =
     useCallback(
-      async () => {
-        setLoading(
+      async (
+        showLoading =
           true
-        );
+      ): Promise<void> => {
+        if (
+          showLoading
+        ) {
+          setLoading(
+            true
+          );
+        }
 
         try {
-          const response =
-            await fetch(
-              "/api/v1/saves",
-              {
-                headers: {
-                  Accept:
-                    "application/json"
+          const [
+            inventoryResponse,
+            rollbackResponse
+          ] =
+            await Promise.all([
+              fetch(
+                "/api/v1/saves",
+                {
+                  headers: {
+                    Accept:
+                      "application/json"
+                  }
                 }
-              }
-            );
+              ),
 
-          if (!response.ok) {
+              fetch(
+                "/api/v1/saves/rollbacks",
+                {
+                  headers: {
+                    Accept:
+                      "application/json"
+                  }
+                }
+              )
+            ]);
+
+          if (
+            !inventoryResponse.ok
+          ) {
             throw new Error(
               await errorMessage(
-                response
+                inventoryResponse
               )
             );
           }
 
-          const payload =
-            await response
+          if (
+            !rollbackResponse.ok
+          ) {
+            throw new Error(
+              await errorMessage(
+                rollbackResponse
+              )
+            );
+          }
+
+          const inventoryPayload =
+            await inventoryResponse
               .json() as
                 SaveInventory;
 
+          const rollbackPayload =
+            await rollbackResponse
+              .json() as
+                RollbackResponse;
+
           setInventory(
-            payload
+            inventoryPayload
+          );
+
+          setRollbacks(
+            rollbackPayload
+              .rollbacks
           );
 
           setPageError(
@@ -448,12 +654,16 @@ export function SavesPage({
             error instanceof
               Error
               ? error.message
-              : "Save inventory could not be loaded."
+              : "Save Tools data could not be loaded."
           );
         } finally {
-          setLoading(
-            false
-          );
+          if (
+            showLoading
+          ) {
+            setLoading(
+              false
+            );
+          }
         }
       },
       []
@@ -461,20 +671,73 @@ export function SavesPage({
 
   useEffect(
     () => {
-      void loadInventory();
+      void loadData();
+
+      const timer =
+        window.setInterval(
+          () => {
+            void loadData(
+              false
+            );
+          },
+          15_000
+        );
+
+      return () => {
+        window.clearInterval(
+          timer
+        );
+      };
     },
     [
-      loadInventory
+      loadData
     ]
   );
 
-  const exportsAllowed =
-    runtimeStatus !==
-      "running" &&
-    runtimeStatus !==
-      "starting" &&
-    runtimeStatus !==
-      "stopping";
+  const matchingTargetWorlds =
+    useMemo(
+      () => {
+        if (
+          !importPreview ||
+          !inventory
+        ) {
+          return [];
+        }
+
+        return inventory.worlds
+          .filter(
+            world =>
+              world.worldId ===
+              importPreview
+                .source
+                .worldId
+          );
+      },
+      [
+        importPreview,
+        inventory
+      ]
+    );
+
+  const importTargetExists =
+    useMemo(
+      () =>
+        inventory
+          ?.worlds
+          .some(
+            world =>
+              world.slotId ===
+                targetSlotId &&
+              world.worldId ===
+                targetWorldId
+          ) ??
+        false,
+      [
+        inventory,
+        targetSlotId,
+        targetWorldId
+      ]
+    );
 
   const exportArchive =
     async (
@@ -487,6 +750,20 @@ export function SavesPage({
       fallbackName:
         string
     ): Promise<void> => {
+      if (
+        !serverStopped
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            "Palworld must be stopped before exporting live save data."
+        });
+
+        return;
+      }
+
       setBusy(
         label
       );
@@ -511,7 +788,9 @@ export function SavesPage({
             }
           );
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
           throw new Error(
             await errorMessage(
               response
@@ -591,7 +870,9 @@ export function SavesPage({
 
   const previewImport =
     async (): Promise<void> => {
-      if (!importFile) {
+      if (
+        !importFile
+      ) {
         setNotice({
           type:
             "error",
@@ -645,7 +926,9 @@ export function SavesPage({
             }
           );
 
-        if (!response.ok) {
+        if (
+          !response.ok
+        ) {
           throw new Error(
             await errorMessage(
               response
@@ -662,12 +945,22 @@ export function SavesPage({
           preview
         );
 
+        setTargetSlotId(
+          preview.source
+            .slotId
+        );
+
+        setTargetWorldId(
+          preview.source
+            .worldId
+        );
+
         setNotice({
           type:
             "success",
 
           message:
-            "Archive passed quarantine validation. No live save files were changed."
+            "Archive passed quarantine validation. Live save data has not been changed."
         });
       } catch (
         error
@@ -689,12 +982,429 @@ export function SavesPage({
       }
     };
 
+  const applyImport =
+    async (): Promise<void> => {
+      if (
+        !importPreview
+      ) {
+        return;
+      }
+
+      if (
+        !serverStopped
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            "Palworld must be stopped before applying imported save data."
+        });
+
+        return;
+      }
+
+      if (
+        !targetSlotId.trim() ||
+        !targetWorldId.trim()
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            "A target slot and world are required."
+        });
+
+        return;
+      }
+
+      if (
+        targetWorldId !==
+        importPreview.source
+          .worldId
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            "V1 imports must preserve the Palworld world ID."
+        });
+
+        return;
+      }
+
+      if (
+        importPreview.source
+          .kind ===
+          "player" &&
+        !importTargetExists
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            "Player imports require an existing target world with the same world ID."
+        });
+
+        return;
+      }
+
+      const subject =
+        importPreview.source
+          .kind ===
+          "world"
+          ? `world ${targetSlotId}/${targetWorldId}`
+          : `player ${importPreview.source.playerId ?? "unknown"} into ${targetSlotId}/${targetWorldId}`;
+
+      const warning =
+        importPreview.source
+          .kind ===
+          "world"
+          ? "Existing live world files will be replaced. Palworld's Backup directory is preserved."
+          : importTargetExists
+            ? "If this player already exists, the player save will be replaced."
+            : "The player save will be added to the target world.";
+
+      const approved =
+        window.confirm(
+          [
+            `Apply imported ${subject}?`,
+            "",
+            warning,
+            "",
+            "King's Palworld Manager will create and retain a rollback snapshot before changing live save data.",
+            "",
+            "The import is single-use after a successful apply."
+          ].join(
+            "\n"
+          )
+        );
+
+      if (
+        !approved
+      ) {
+        return;
+      }
+
+      setBusy(
+        "Apply import"
+      );
+
+      setNotice({
+        type:
+          "working",
+
+        message:
+          "Creating rollback snapshot, replacing save data and verifying SHA-256…"
+      });
+
+      try {
+        const response =
+          await fetch(
+            `/api/v1/saves/import/${encodeURIComponent(
+              importPreview.operationId
+            )}/apply`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                Accept:
+                  "application/json",
+
+                "Content-Type":
+                  "application/json"
+              },
+
+              body:
+                JSON.stringify({
+                  targetSlotId:
+                    targetSlotId.trim(),
+
+                  targetWorldId:
+                    targetWorldId.trim()
+                })
+            }
+          );
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            await errorMessage(
+              response
+            )
+          );
+        }
+
+        const result =
+          await response
+            .json() as
+              ApplyResult;
+
+        setNotice({
+          type:
+            "success",
+
+          message:
+            `${result.kind === "world" ? "World" : "Player"} import applied and verified. Rollback ${result.rollback.id} was retained.`
+        });
+
+        setImportPreview(
+          null
+        );
+
+        setImportFile(
+          null
+        );
+
+        setTargetSlotId(
+          ""
+        );
+
+        setTargetWorldId(
+          ""
+        );
+
+        await loadData(
+          false
+        );
+      } catch (
+        error
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            error instanceof
+              Error
+              ? error.message
+              : "Save import could not be applied."
+        });
+      } finally {
+        setBusy(
+          null
+        );
+      }
+    };
+
+  const restoreRollback =
+    async (
+      rollback:
+        RollbackSnapshot
+    ): Promise<void> => {
+      if (
+        !serverStopped
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            "Palworld must be stopped before restoring a rollback snapshot."
+        });
+
+        return;
+      }
+
+      const target =
+        rollback.kind ===
+          "world"
+          ? `${rollback.target.slotId}/${rollback.target.worldId}`
+          : `${rollback.target.slotId}/${rollback.target.worldId}/${rollback.target.playerId ?? "unknown"}`;
+
+      const approved =
+        window.confirm(
+          [
+            `Restore rollback ${rollback.id}?`,
+            "",
+            `Target: ${target}`,
+            "",
+            rollback.kind ===
+              "world"
+              ? "This replaces the current world data with the retained pre-import snapshot."
+              : rollback.sourceExisted
+                ? "This replaces the current player save with the retained pre-import copy."
+                : "The original player did not exist, so restore will remove the imported player.",
+            "",
+            "The rollback snapshot itself will remain available after restoration."
+          ].join(
+            "\n"
+          )
+        );
+
+      if (
+        !approved
+      ) {
+        return;
+      }
+
+      setBusy(
+        `Restore ${rollback.id}`
+      );
+
+      setNotice({
+        type:
+          "working",
+
+        message:
+          "Restoring rollback snapshot and verifying save data…"
+      });
+
+      try {
+        const response =
+          await fetch(
+            `/api/v1/saves/rollbacks/${encodeURIComponent(
+              rollback.id
+            )}/restore`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                Accept:
+                  "application/json"
+              }
+            }
+          );
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            await errorMessage(
+              response
+            )
+          );
+        }
+
+        setNotice({
+          type:
+            "success",
+
+          message:
+            "Rollback restored successfully. The snapshot is still retained."
+        });
+
+        await loadData(
+          false
+        );
+      } catch (
+        error
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            error instanceof
+              Error
+              ? error.message
+              : "Rollback restore failed."
+        });
+      } finally {
+        setBusy(
+          null
+        );
+      }
+    };
+
+  const deleteRollback =
+    async (
+      rollback:
+        RollbackSnapshot
+    ): Promise<void> => {
+      const approved =
+        window.confirm(
+          [
+            `Delete rollback ${rollback.id}?`,
+            "",
+            "This permanently removes the retained rollback snapshot.",
+            "",
+            "This action does not modify the current Palworld world."
+          ].join(
+            "\n"
+          )
+        );
+
+      if (
+        !approved
+      ) {
+        return;
+      }
+
+      setBusy(
+        `Delete ${rollback.id}`
+      );
+
+      try {
+        const response =
+          await fetch(
+            `/api/v1/saves/rollbacks/${encodeURIComponent(
+              rollback.id
+            )}`,
+            {
+              method:
+                "DELETE",
+
+              headers: {
+                Accept:
+                  "application/json"
+              }
+            }
+          );
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            await errorMessage(
+              response
+            )
+          );
+        }
+
+        setNotice({
+          type:
+            "success",
+
+          message:
+            "Rollback snapshot deleted."
+        });
+
+        await loadData(
+          false
+        );
+      } catch (
+        error
+      ) {
+        setNotice({
+          type:
+            "error",
+
+          message:
+            error instanceof
+              Error
+              ? error.message
+              : "Rollback snapshot could not be deleted."
+        });
+      } finally {
+        setBusy(
+          null
+        );
+      }
+    };
+
   return (
     <>
       <header className="page-header">
         <div>
           <p className="eyebrow">
-            SAVE MANAGEMENT
+            PALWORLD SAVE TOOLS
           </p>
 
           <h1>
@@ -702,7 +1412,7 @@ export function SavesPage({
           </h1>
 
           <p className="subtitle">
-            Inspect worlds, export save archives and safely validate imports.
+            Export worlds and players, validate imports, safely replace live saves and restore retained rollback snapshots.
           </p>
         </div>
 
@@ -714,7 +1424,7 @@ export function SavesPage({
               null
           }
           onClick={() => {
-            void loadInventory();
+            void loadData();
           }}
           type="button"
         >
@@ -742,7 +1452,7 @@ export function SavesPage({
 
                 <div>
                   <strong>
-                    Save data unavailable
+                    Save Tools unavailable
                   </strong>
 
                   <span>
@@ -801,6 +1511,46 @@ export function SavesPage({
             )
           : null
       }
+
+      <section
+        className={
+          serverStopped
+            ? "save-runtime-banner save-runtime-stopped"
+            : "save-runtime-banner save-runtime-blocked"
+        }
+      >
+        {
+          serverStopped
+            ? (
+                <ShieldCheck
+                  size={18}
+                />
+              )
+            : (
+                <ShieldAlert
+                  size={18}
+                />
+              )
+        }
+
+        <div>
+          <strong>
+            {
+              serverStopped
+                ? "Palworld is stopped — save mutations are unlocked"
+                : `Palworld state: ${runtimeStatus} — destructive save actions are locked`
+            }
+          </strong>
+
+          <span>
+            {
+              serverStopped
+                ? "Exports, imports and rollback restores can be performed safely."
+                : "Stop Palworld before exporting, applying an import or restoring a rollback."
+            }
+          </span>
+        </div>
+      </section>
 
       <section className="save-summary-grid">
         <article>
@@ -881,29 +1631,23 @@ export function SavesPage({
 
         <article>
           <div className="save-summary-icon">
-            <Archive
+            <ArchiveRestore
               size={18}
             />
           </div>
 
           <span>
-            Export state
+            Rollbacks
           </span>
 
           <strong>
             {
-              exportsAllowed
-                ? "Ready"
-                : "Server active"
+              rollbacks.length
             }
           </strong>
 
           <small>
-            {
-              exportsAllowed
-                ? "World/player export allowed"
-                : "Stop Palworld before exporting"
-            }
+            Retained safety snapshots
           </small>
         </article>
       </section>
@@ -938,16 +1682,16 @@ export function SavesPage({
           : null
       }
 
-      <section className="save-page-grid">
+      <section className="save-tools-layout">
         <article className="panel world-list-panel">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">
-                LIVE WORLDS
+                LIVE SAVE DATA
               </p>
 
               <h3>
-                Save inventory
+                Worlds & players
               </h3>
             </div>
 
@@ -989,13 +1733,13 @@ export function SavesPage({
                             >
                               <button
                                 className="world-card-header"
-                                onClick={() =>
+                                onClick={() => {
                                   setExpandedWorld(
                                     expanded
                                       ? null
                                       : key
-                                  )
-                                }
+                                  );
+                                }}
                                 type="button"
                               >
                                 {
@@ -1097,7 +1841,7 @@ export function SavesPage({
                                                 : ""
                                             }
                                           >
-                                            Palworld backup/
+                                            Palworld Backup/
                                           </span>
                                         </div>
 
@@ -1142,8 +1886,7 @@ export function SavesPage({
                                         </dl>
 
                                         {
-                                          world.warnings
-                                            .length >
+                                          world.warnings.length >
                                             0
                                             ? (
                                                 <div className="world-warning-box">
@@ -1175,7 +1918,7 @@ export function SavesPage({
                                           <button
                                             className="control-button"
                                             disabled={
-                                              !exportsAllowed ||
+                                              !serverStopped ||
                                               !world.safe ||
                                               busy !==
                                                 null
@@ -1251,7 +1994,7 @@ export function SavesPage({
                                                       <button
                                                         className="table-action-button"
                                                         disabled={
-                                                          !exportsAllowed ||
+                                                          !serverStopped ||
                                                           !world.safe ||
                                                           busy !==
                                                             null
@@ -1322,273 +2065,651 @@ export function SavesPage({
           }
         </article>
 
-        <article className="control-card import-card">
-          <div className="control-heading">
-            <div className="control-icon">
-              <Upload
-                size={21}
+        <div className="save-tools-side-column">
+          <article className="control-card import-card save-import-center">
+            <div className="control-heading">
+              <div className="control-icon">
+                <Upload
+                  size={21}
+                />
+              </div>
+
+              <div>
+                <p className="eyebrow">
+                  IMPORT CENTER
+                </p>
+
+                <h3>
+                  Validate & apply
+                </h3>
+              </div>
+            </div>
+
+            <p className="control-copy">
+              KPM exports are inspected in quarantine before any live files can be changed.
+            </p>
+
+            <label className="file-drop">
+              <FileArchive
+                size={28}
               />
-            </div>
 
-            <div>
-              <p className="eyebrow">
-                SAFE IMPORT
-              </p>
-
-              <h3>
-                Quarantine & preview
-              </h3>
-            </div>
-          </div>
-
-          <p className="control-copy">
-            Upload a KPM save archive for security inspection.
-            This does not replace any live save data.
-          </p>
-
-          <label className="file-drop">
-            <FileArchive
-              size={28}
-            />
-
-            <strong>
-              {
-                importFile
-                  ? importFile.name
-                  : "Choose a .tar.gz save archive"
-              }
-            </strong>
-
-            <span>
-              {
-                importFile
-                  ? formatBytes(
-                      importFile.size
-                    )
-                  : "World or individual player export"
-              }
-            </span>
-
-            <input
-              accept=".gz,.tgz,application/gzip"
-              disabled={
-                busy !==
-                null
-              }
-              onChange={
-                event => {
-                  const file =
-                    event.target
-                      .files?.[0] ??
-                    null;
-
-                  setImportFile(
-                    file
-                  );
-
-                  setImportPreview(
-                    null
-                  );
-                }
-              }
-              type="file"
-            />
-          </label>
-
-          <button
-            className="control-button wide-button import-preview-button"
-            disabled={
-              !importFile ||
-              busy !==
-                null
-            }
-            onClick={() => {
-              void previewImport();
-            }}
-            type="button"
-          >
-            <ShieldCheck
-              size={15}
-            />
-
-            Validate import
-          </button>
-
-          <div className="import-safety-note">
-            <ShieldCheck
-              size={17}
-            />
-
-            <div>
               <strong>
-                Preview only
+                {
+                  importFile
+                    ? importFile.name
+                    : "Choose a .tar.gz save archive"
+                }
               </strong>
 
               <span>
-                Archive paths, entry types, manifest, sizes and SHA-256 hashes
-                are verified in Manager quarantine before any future restore.
+                {
+                  importFile
+                    ? formatBytes(
+                        importFile.size
+                      )
+                    : "World or individual player export"
+                }
               </span>
+
+              <input
+                accept=".gz,.tgz,application/gzip"
+                disabled={
+                  busy !==
+                  null
+                }
+                onChange={
+                  event => {
+                    const file =
+                      event.target
+                        .files?.[0] ??
+                      null;
+
+                    setImportFile(
+                      file
+                    );
+
+                    setImportPreview(
+                      null
+                    );
+
+                    setTargetSlotId(
+                      ""
+                    );
+
+                    setTargetWorldId(
+                      ""
+                    );
+                  }
+                }
+                type="file"
+              />
+            </label>
+
+            <button
+              className="control-button wide-button import-preview-button"
+              disabled={
+                !importFile ||
+                busy !==
+                  null
+              }
+              onClick={() => {
+                void previewImport();
+              }}
+              type="button"
+            >
+              <ShieldCheck
+                size={15}
+              />
+
+              Validate import
+            </button>
+
+            <div className="import-safety-note">
+              <ShieldCheck
+                size={17}
+              />
+
+              <div>
+                <strong>
+                  Quarantine first
+                </strong>
+
+                <span>
+                  Paths, manifest, file inventory, expanded sizes and SHA-256 hashes are verified before apply is unlocked.
+                </span>
+              </div>
             </div>
-          </div>
 
-          {
-            importPreview
-              ? (
-                  <div className="import-preview-result">
-                    <div className="import-result-heading">
-                      <FileCheck2
-                        size={20}
-                      />
+            {
+              importPreview
+                ? (
+                    <div className="import-preview-result">
+                      <div className="import-result-heading">
+                        <FileCheck2
+                          size={20}
+                        />
 
-                      <div>
-                        <strong>
-                          Validation passed
-                        </strong>
+                        <div>
+                          <strong>
+                            Validation passed
+                          </strong>
 
+                          <span>
+                            {
+                              importPreview.source.kind ===
+                                "world"
+                                ? "World archive"
+                                : "Player archive"
+                            }
+                          </span>
+                        </div>
+                      </div>
+
+                      <dl className="save-details">
+                        <div>
+                          <dt>
+                            Source slot
+                          </dt>
+
+                          <dd>
+                            {
+                              importPreview.source
+                                .slotId
+                            }
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>
+                            World ID
+                          </dt>
+
+                          <dd>
+                            {
+                              importPreview.source
+                                .worldId
+                            }
+                          </dd>
+                        </div>
+
+                        {
+                          importPreview.source
+                            .playerId
+                            ? (
+                                <div>
+                                  <dt>
+                                    Player
+                                  </dt>
+
+                                  <dd>
+                                    {
+                                      importPreview.source
+                                        .playerId
+                                    }
+                                  </dd>
+                                </div>
+                              )
+                            : null
+                        }
+
+                        <div>
+                          <dt>
+                            Files
+                          </dt>
+
+                          <dd>
+                            {
+                              importPreview.manifest
+                                .fileCount
+                            }
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>
+                            Size
+                          </dt>
+
+                          <dd>
+                            {
+                              formatBytes(
+                                importPreview.manifest
+                                  .totalBytes
+                              )
+                            }
+                          </dd>
+                        </div>
+
+                        <div>
+                          <dt>
+                            Expires
+                          </dt>
+
+                          <dd>
+                            {
+                              formatDate(
+                                importPreview.expiresAt
+                              )
+                            }
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <div className="hash-box">
                         <span>
-                          Operation {
-                            importPreview.operationId
-                          }
+                          Archive SHA-256
                         </span>
-                      </div>
-                    </div>
 
-                    <dl className="save-details">
-                      <div>
-                        <dt>
-                          Kind
-                        </dt>
-
-                        <dd>
+                        <code>
                           {
-                            importPreview.source
-                              .kind
+                            importPreview.archive
+                              .sha256
                           }
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt>
-                          World
-                        </dt>
-
-                        <dd>
-                          {
-                            importPreview.source
-                              .worldId
-                          }
-                        </dd>
+                        </code>
                       </div>
 
                       {
-                        importPreview.source
-                          .playerId
+                        importPreview.warnings.length >
+                          0
                           ? (
-                              <div>
-                                <dt>
-                                  Player
-                                </dt>
+                              <div className="world-warning-box">
+                                {
+                                  importPreview.warnings.map(
+                                    warning => (
+                                      <div
+                                        key={
+                                          warning
+                                        }
+                                      >
+                                        <CircleAlert
+                                          size={13}
+                                        />
 
-                                <dd>
-                                  {
-                                    importPreview.source
-                                      .playerId
-                                  }
-                                </dd>
+                                        {
+                                          warning
+                                        }
+                                      </div>
+                                    )
+                                  )
+                                }
                               </div>
                             )
                           : null
                       }
 
-                      <div>
-                        <dt>
-                          Files
-                        </dt>
+                      <div className="import-target-panel">
+                        <div className="import-target-heading">
+                          <strong>
+                            Apply target
+                          </strong>
 
-                        <dd>
-                          {
-                            importPreview.manifest
-                              .fileCount
-                          }
-                        </dd>
-                      </div>
+                          <span>
+                            World ID is locked in V1. Slot may change.
+                          </span>
+                        </div>
 
-                      <div>
-                        <dt>
-                          Expanded size
-                        </dt>
+                        <div className="import-target-fields">
+                          <label>
+                            <span>
+                              Target slot
+                            </span>
 
-                        <dd>
-                          {
-                            formatBytes(
-                              importPreview.validation
-                                .expandedBytes
-                            )
-                          }
-                        </dd>
-                      </div>
-
-                      <div>
-                        <dt>
-                          Expires
-                        </dt>
-
-                        <dd>
-                          {
-                            formatDate(
-                              importPreview.expiresAt
-                            )
-                          }
-                        </dd>
-                      </div>
-                    </dl>
-
-                    <div className="hash-box">
-                      <span>
-                        Archive SHA-256
-                      </span>
-
-                      <code>
-                        {
-                          importPreview.archive
-                            .sha256
-                        }
-                      </code>
-                    </div>
-
-                    {
-                      importPreview.warnings.length >
-                        0
-                        ? (
-                            <div className="world-warning-box">
-                              {
-                                importPreview.warnings.map(
-                                  warning => (
-                                    <div
-                                      key={
-                                        warning
-                                      }
-                                    >
-                                      <CircleAlert
-                                        size={13}
-                                      />
-
-                                      {
-                                        warning
-                                      }
-                                    </div>
+                            <input
+                              maxLength={128}
+                              onChange={
+                                event =>
+                                  setTargetSlotId(
+                                    event.target
+                                      .value
                                   )
-                                )
+                              }
+                              value={
+                                targetSlotId
+                              }
+                            />
+                          </label>
+
+                          <label>
+                            <span>
+                              Target world ID
+                            </span>
+
+                            <input
+                              disabled
+                              value={
+                                targetWorldId
+                              }
+                            />
+                          </label>
+                        </div>
+
+                        {
+                          importPreview.source
+                            .kind ===
+                            "player"
+                            ? (
+                                <div className="matching-worlds">
+                                  <span>
+                                    Compatible existing worlds
+                                  </span>
+
+                                  {
+                                    matchingTargetWorlds.length >
+                                      0
+                                      ? matchingTargetWorlds.map(
+                                          world => (
+                                            <button
+                                              className={
+                                                world.slotId ===
+                                                  targetSlotId
+                                                  ? "matching-world active"
+                                                  : "matching-world"
+                                              }
+                                              key={
+                                                `${world.slotId}/${world.worldId}`
+                                              }
+                                              onClick={() => {
+                                                setTargetSlotId(
+                                                  world.slotId
+                                                );
+
+                                                setTargetWorldId(
+                                                  world.worldId
+                                                );
+                                              }}
+                                              type="button"
+                                            >
+                                              Slot {
+                                                world.slotId
+                                              }
+                                            </button>
+                                          )
+                                        )
+                                      : (
+                                          <strong>
+                                            No compatible target world is currently installed.
+                                          </strong>
+                                        )
+                                  }
+                                </div>
+                              )
+                            : null
+                        }
+
+                        <div className="save-destructive-warning">
+                          <ShieldAlert
+                            size={17}
+                          />
+
+                          <div>
+                            <strong>
+                              {
+                                importPreview.source
+                                  .kind ===
+                                  "world"
+                                  ? importTargetExists
+                                    ? "Existing world will be replaced"
+                                    : "A new world target will be created"
+                                  : importTargetExists
+                                    ? "Player save will be added or replaced"
+                                    : "Player import requires an existing compatible world"
+                              }
+                            </strong>
+
+                            <span>
+                              A rollback snapshot is created and retained before KPM modifies live save data.
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          className="control-button wide-button save-apply-import-button"
+                          disabled={
+                            !serverStopped ||
+                            busy !==
+                              null ||
+                            !targetSlotId.trim() ||
+                            !targetWorldId.trim() ||
+                            (
+                              importPreview.source.kind ===
+                                "player" &&
+                              !importTargetExists
+                            )
+                          }
+                          onClick={() => {
+                            void applyImport();
+                          }}
+                          type="button"
+                        >
+                          <ArchiveRestore
+                            size={15}
+                          />
+
+                          Apply validated import
+                        </button>
+                      </div>
+                    </div>
+                  )
+                : null
+            }
+          </article>
+        </div>
+      </section>
+
+      <section className="panel rollback-panel">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">
+              RECOVERY
+            </p>
+
+            <h3>
+              Rollback snapshots
+            </h3>
+          </div>
+
+          <span className="panel-count">
+            {
+              rollbacks.length
+            }
+          </span>
+        </div>
+
+        <div className="rollback-explanation">
+          <DatabaseBackup
+            size={17}
+          />
+
+          <div>
+            <strong>
+              Retained until you delete them
+            </strong>
+
+            <span>
+              Successful imports do not discard their pre-import safety copy. Restore or delete snapshots explicitly from here.
+            </span>
+          </div>
+        </div>
+
+        {
+          rollbacks.length >
+            0
+            ? (
+                <div className="rollback-list">
+                  {
+                    rollbacks.map(
+                      rollback => {
+                        const target =
+                          rollback.kind ===
+                            "world"
+                            ? `${rollback.target.slotId}/${rollback.target.worldId}`
+                            : `${rollback.target.slotId}/${rollback.target.worldId}/${rollback.target.playerId ?? "unknown"}`;
+
+                        return (
+                          <article
+                            className="rollback-card"
+                            key={
+                              rollback.id
+                            }
+                          >
+                            <div className="rollback-card-icon">
+                              {
+                                rollback.kind ===
+                                  "world"
+                                  ? (
+                                      <HardDrive
+                                        size={18}
+                                      />
+                                    )
+                                  : (
+                                      <Users
+                                        size={18}
+                                      />
+                                    )
                               }
                             </div>
-                          )
-                        : null
-                    }
-                  </div>
-                )
-              : null
-          }
-        </article>
+
+                            <div className="rollback-card-main">
+                              <div className="rollback-card-heading">
+                                <div>
+                                  <strong>
+                                    {
+                                      rollback.kind ===
+                                        "world"
+                                        ? "World rollback"
+                                        : "Player rollback"
+                                    }
+                                  </strong>
+
+                                  <span>
+                                    {target}
+                                  </span>
+                                </div>
+
+                                <code>
+                                  {
+                                    rollback.id
+                                  }
+                                </code>
+                              </div>
+
+                              <div className="rollback-meta">
+                                <span>
+                                  Created {
+                                    formatDate(
+                                      rollback.createdAt
+                                    )
+                                  }
+                                </span>
+
+                                <span>
+                                  {
+                                    rollback.fileCount
+                                  } files
+                                </span>
+
+                                <span>
+                                  {
+                                    formatBytes(
+                                      rollback.totalBytes
+                                    )
+                                  }
+                                </span>
+
+                                {
+                                  rollback.lastRestoredAt
+                                    ? (
+                                        <span className="rollback-restored-badge">
+                                          Restored {
+                                            formatDate(
+                                              rollback.lastRestoredAt
+                                            )
+                                          }
+                                        </span>
+                                      )
+                                    : null
+                                }
+                              </div>
+
+                              {
+                                rollback.kind ===
+                                  "player" &&
+                                !rollback.sourceExisted
+                                  ? (
+                                      <div className="rollback-new-player-note">
+                                        Original player did not exist. Restoring this snapshot removes the imported player.
+                                      </div>
+                                    )
+                                  : null
+                              }
+                            </div>
+
+                            <div className="rollback-actions">
+                              <button
+                                className="control-button"
+                                disabled={
+                                  !serverStopped ||
+                                  busy !==
+                                    null
+                                }
+                                onClick={() => {
+                                  void restoreRollback(
+                                    rollback
+                                  );
+                                }}
+                                type="button"
+                              >
+                                <RotateCcw
+                                  size={13}
+                                />
+
+                                Restore
+                              </button>
+
+                              <button
+                                className="rollback-delete-button"
+                                disabled={
+                                  busy !==
+                                  null
+                                }
+                                onClick={() => {
+                                  void deleteRollback(
+                                    rollback
+                                  );
+                                }}
+                                type="button"
+                              >
+                                <Trash2
+                                  size={13}
+                                />
+
+                                Delete
+                              </button>
+                            </div>
+                          </article>
+                        );
+                      }
+                    )
+                  }
+                </div>
+              )
+            : (
+                <div className="empty-state rollback-empty-state">
+                  <Archive
+                    size={28}
+                  />
+
+                  <strong>
+                    No rollback snapshots retained
+                  </strong>
+
+                  <span>
+                    KPM creates a rollback automatically before a successful save import changes live data.
+                  </span>
+                </div>
+              )
+        }
       </section>
     </>
   );
