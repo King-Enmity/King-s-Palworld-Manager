@@ -15,6 +15,10 @@ import {
 } from "./infrastructure/audit-repository.js";
 
 import {
+  LogRepository
+} from "./modules/logs/log-repository.js";
+
+import {
   PalworldDiscoveryService
 } from "./modules/palworld/discovery-service.js";
 
@@ -120,6 +124,11 @@ async function main():
       database
     );
 
+  const logs =
+    new LogRepository(
+      database
+    );
+
   const palworldRuntime =
     new PalworldRuntimeState();
 
@@ -174,6 +183,9 @@ async function main():
       restShutdownWaitSeconds:
         config
           .palworldRestShutdownWaitSeconds,
+
+      consoleLogs:
+        logs,
 
       stopTimeoutMs:
         config
@@ -294,6 +306,8 @@ async function main():
       database,
 
       systemService,
+
+      logs,
 
       palworldDiscovery,
       palworldLifecycle,

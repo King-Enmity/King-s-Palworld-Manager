@@ -17,6 +17,14 @@ import {
   type KpmDatabase
 } from "./database/database.js";
 
+import {
+  registerLogRoutes
+} from "./modules/logs/log-routes.js";
+
+import type {
+  LogRepository
+} from "./modules/logs/log-repository.js";
+
 import type {
   PalworldDiscoveryService
 } from "./modules/palworld/discovery-service.js";
@@ -145,6 +153,9 @@ export interface AppDependencies {
 
   systemService:
     SystemService;
+
+  logs:
+    LogRepository;
 
   palworldDiscovery:
     PalworldDiscoveryService;
@@ -277,6 +288,11 @@ export function buildApp(
             .toISOString()
       };
     }
+  );
+
+  registerLogRoutes(
+    app,
+    dependencies.logs
   );
 
   registerSaveRoutes(

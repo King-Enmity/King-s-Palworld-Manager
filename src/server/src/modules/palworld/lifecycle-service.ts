@@ -7,6 +7,10 @@ import {
   type ChildProcess
 } from "node:child_process";
 
+import {
+  StringDecoder
+} from "node:string_decoder";
+
 import type {
   AuditRepository
 } from "../../infrastructure/audit-repository.js";
@@ -45,6 +49,20 @@ export interface PalworldLifecycleRestControl {
   ): Promise<unknown>;
 }
 
+export interface PalworldConsoleLogSink {
+  recordPalworldConsole(
+    stream:
+      "stdout" |
+      "stderr",
+
+    input:
+      string
+  ): number | null;
+}
+
+const MAX_CAPTURED_CONSOLE_LINE_CHARS =
+  16_384;
+
 export interface PalworldLifecycleDependencies {
   runtime:
     PalworldRuntimeState;
@@ -60,6 +78,10 @@ export interface PalworldLifecycleDependencies {
 
   restShutdownWaitSeconds:
     number;
+
+  consoleLogs:
+    PalworldConsoleLogSink |
+    null;
 
   stopTimeoutMs:
     number;
@@ -311,12 +333,19 @@ export class PalworldLifecycleService {
           windowsHide:
             true,
 
-          stdio:
-            "ignore"
+          stdio: [
+            "ignore",
+            "pipe",
+            "pipe"
+          ]
         }
       );
 
     this.child = child;
+
+    this.attachConsoleLogging(
+      child
+    );
 
     child.once(
       "exit",
@@ -827,6 +856,207 @@ export class PalworldLifecycleService {
     return this.dependencies
       .runtime
       .snapshot();
+  }
+
+  private attachConsoleLogging(
+    child:
+      ChildProcess
+  ): void {
+    this.attachConsoleStream(
+      child.stdout,
+      "stdout"
+    );
+
+    this.attachConsoleStream(
+      child.stderr,
+      "stderr"
+    );
+  }
+
+  private attachConsoleStream(
+    stream:
+      ChildProcess["stdout"],
+
+    streamName:
+      "stdout" |
+      "stderr"
+  ): void {
+    const consoleLogs =
+      this.dependencies
+        .consoleLogs;
+
+    if (
+      !stream ||
+      !consoleLogs
+    ) {
+      return;
+    }
+
+    const decoder =
+      new StringDecoder(
+        "utf8"
+      );
+
+    let buffer =
+      "";
+
+    let droppingOversizedRemainder =
+      false;
+
+    const record =
+      (
+        input:
+          string
+      ): void => {
+        let line =
+          input;
+
+        if (
+          line.endsWith(
+            "\r"
+          )
+        ) {
+          line =
+            line.slice(
+              0,
+              -1
+            );
+        }
+
+        try {
+          consoleLogs
+            .recordPalworldConsole(
+              streamName,
+              line
+            );
+        } catch {
+          // Logging must never terminate or interfere
+          // with the Palworld server process.
+        }
+      };
+
+    const processBuffer =
+      (): void => {
+        while (true) {
+          if (
+            droppingOversizedRemainder
+          ) {
+            const newline =
+              buffer.indexOf(
+                "\n"
+              );
+
+            if (
+              newline ===
+              -1
+            ) {
+              buffer =
+                "";
+
+              return;
+            }
+
+            buffer =
+              buffer.slice(
+                newline +
+                1
+              );
+
+            droppingOversizedRemainder =
+              false;
+
+            continue;
+          }
+
+          const newline =
+            buffer.indexOf(
+              "\n"
+            );
+
+          if (
+            newline !==
+            -1
+          ) {
+            record(
+              buffer.slice(
+                0,
+                newline
+              )
+            );
+
+            buffer =
+              buffer.slice(
+                newline +
+                1
+              );
+
+            continue;
+          }
+
+          if (
+            buffer.length >
+            MAX_CAPTURED_CONSOLE_LINE_CHARS
+          ) {
+            record(
+              buffer.slice(
+                0,
+                MAX_CAPTURED_CONSOLE_LINE_CHARS +
+                1
+              )
+            );
+
+            buffer =
+              "";
+
+            droppingOversizedRemainder =
+              true;
+          }
+
+          return;
+        }
+      };
+
+    stream.on(
+      "data",
+      (
+        chunk:
+          Buffer |
+          string
+      ) => {
+        buffer +=
+          typeof chunk ===
+            "string"
+            ? chunk
+            : decoder.write(
+                chunk
+              );
+
+        processBuffer();
+      }
+    );
+
+    stream.once(
+      "end",
+      () => {
+        buffer +=
+          decoder.end();
+
+        processBuffer();
+
+        if (
+          !droppingOversizedRemainder &&
+          buffer.length >
+            0
+        ) {
+          record(
+            buffer
+          );
+        }
+
+        buffer =
+          "";
+      }
+    );
   }
 
   private handleExit(

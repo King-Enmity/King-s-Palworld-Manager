@@ -275,6 +275,46 @@ const migrations: readonly Migration[] = [
           created_at
         );
     `
+  },
+  {
+    version: 5,
+    name: "palworld_console_logs",
+    sql: `
+      CREATE TABLE palworld_console_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        occurred_at TEXT NOT NULL,
+
+        stream TEXT NOT NULL
+          CHECK (
+            stream IN (
+              'stdout',
+              'stderr'
+            )
+          ),
+
+        message TEXT NOT NULL,
+
+        truncated INTEGER NOT NULL
+          CHECK (
+            truncated IN (
+              0,
+              1
+            )
+          )
+      ) STRICT;
+
+      CREATE INDEX idx_palworld_console_logs_occurred_at
+        ON palworld_console_logs(
+          occurred_at DESC
+        );
+
+      CREATE INDEX idx_palworld_console_logs_stream
+        ON palworld_console_logs(
+          stream,
+          occurred_at DESC
+        );
+    `
   }
 
 ];
