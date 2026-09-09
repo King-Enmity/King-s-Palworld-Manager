@@ -56,8 +56,16 @@ import type {
 } from "./modules/saves/save-export-service.js";
 
 import type {
+  SaveImportApplyService
+} from "./modules/saves/save-import-apply-service.js";
+
+import type {
   SaveImportService
 } from "./modules/saves/save-import-service.js";
+
+import type {
+  SaveRollbackService
+} from "./modules/saves/save-rollback-service.js";
 
 import {
   registerSaveRoutes
@@ -181,6 +189,12 @@ export interface AppDependencies {
   saveImports:
     SaveImportService;
 
+  saveImportApply:
+    SaveImportApplyService;
+
+  saveRollbacks:
+    SaveRollbackService;
+
   steamMetadata:
     SteamMetadataService;
 
@@ -299,7 +313,9 @@ export function buildApp(
     app,
     dependencies.saveInventory,
     dependencies.saveExports,
-    dependencies.saveImports
+    dependencies.saveImports,
+    dependencies.saveImportApply,
+    dependencies.saveRollbacks
   );
 
   registerSteamRoutes(

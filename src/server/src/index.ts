@@ -59,8 +59,16 @@ import {
 } from "./modules/saves/save-export-service.js";
 
 import {
+  SaveImportApplyService
+} from "./modules/saves/save-import-apply-service.js";
+
+import {
   SaveImportService
 } from "./modules/saves/save-import-service.js";
+
+import {
+  SaveRollbackService
+} from "./modules/saves/save-rollback-service.js";
 
 import {
   SaveInventoryService
@@ -217,6 +225,29 @@ async function main():
       audit
     );
 
+  const saveRollbacks =
+    new SaveRollbackService(
+      config,
+      audit,
+
+      () =>
+        palworldLifecycle
+          .snapshot()
+    );
+
+  const saveImportApply =
+    new SaveImportApplyService(
+      config,
+      saveImports,
+      saveInventory,
+      saveRollbacks,
+      audit,
+
+      () =>
+        palworldLifecycle
+          .snapshot()
+    );
+
   const schedulerRepository =
     new SchedulerRepository(
       database
@@ -319,6 +350,8 @@ async function main():
       saveInventory,
       saveExports,
       saveImports,
+      saveImportApply,
+      saveRollbacks,
 
       steamMetadata,
 

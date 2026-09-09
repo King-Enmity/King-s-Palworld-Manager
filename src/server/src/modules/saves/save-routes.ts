@@ -16,9 +16,19 @@ import {
 } from "./save-export-service.js";
 
 import {
+  SaveImportApplyError,
+  type SaveImportApplyService
+} from "./save-import-apply-service.js";
+
+import {
   SaveImportError,
   type SaveImportService
 } from "./save-import-service.js";
+
+import {
+  SaveRollbackError,
+  type SaveRollbackService
+} from "./save-rollback-service.js";
 
 import {
   SaveInventoryError,
@@ -44,6 +54,29 @@ const WorldParamsSchema =
       IdentifierSchema,
 
     worldId:
+      IdentifierSchema
+  }).strict();
+
+const OperationParamsSchema =
+  z.object({
+    operationId:
+      z.string()
+        .uuid()
+  }).strict();
+
+const RollbackParamsSchema =
+  z.object({
+    rollbackId:
+      z.string()
+        .uuid()
+  }).strict();
+
+const ApplyImportSchema =
+  z.object({
+    targetSlotId:
+      IdentifierSchema,
+
+    targetWorldId:
       IdentifierSchema
   }).strict();
 
@@ -101,7 +134,13 @@ export function registerSaveRoutes(
     SaveExportService,
 
   imports:
-    SaveImportService
+    SaveImportService,
+
+  importApply:
+    SaveImportApplyService,
+
+  rollbacks:
+    SaveRollbackService
 ): void {
   const sendError =
     (
@@ -117,7 +156,11 @@ export function registerSaveRoutes(
         error instanceof
           SaveExportError ||
         error instanceof
-          SaveImportError
+          SaveImportError ||
+        error instanceof
+          SaveImportApplyError ||
+        error instanceof
+          SaveRollbackError
       ) {
         return reply
           .code(
@@ -382,6 +425,164 @@ export function registerSaveRoutes(
           reply,
           artifact
         );
+      } catch (
+        error
+      ) {
+        return sendError(
+          reply,
+          error
+        );
+      }
+    }
+  );
+
+  app.get(
+    "/api/v1/saves/rollbacks",
+
+    async () => ({
+      rollbacks:
+        rollbacks.list()
+    })
+  );
+
+  app.post(
+    "/api/v1/saves/rollbacks/:rollbackId/restore",
+
+    async (
+      request,
+      reply
+    ) => {
+      const parsed =
+        RollbackParamsSchema
+          .safeParse(
+            request.params
+          );
+
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({
+            error:
+              "invalid-request",
+
+            message:
+              "Save rollback request is invalid."
+          });
+      }
+
+      try {
+        return rollbacks
+          .restore(
+            parsed.data
+              .rollbackId
+          );
+      } catch (
+        error
+      ) {
+        return sendError(
+          reply,
+          error
+        );
+      }
+    }
+  );
+
+  app.delete(
+    "/api/v1/saves/rollbacks/:rollbackId",
+
+    async (
+      request,
+      reply
+    ) => {
+      const parsed =
+        RollbackParamsSchema
+          .safeParse(
+            request.params
+          );
+
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({
+            error:
+              "invalid-request",
+
+            message:
+              "Save rollback request is invalid."
+          });
+      }
+
+      try {
+        rollbacks.delete(
+          parsed.data
+            .rollbackId
+        );
+
+        return {
+          deleted:
+            true,
+
+          rollbackId:
+            parsed.data
+              .rollbackId
+        };
+      } catch (
+        error
+      ) {
+        return sendError(
+          reply,
+          error
+        );
+      }
+    }
+  );
+
+  app.post(
+    "/api/v1/saves/import/:operationId/apply",
+
+    async (
+      request,
+      reply
+    ) => {
+      const params =
+        OperationParamsSchema
+          .safeParse(
+            request.params
+          );
+
+      const body =
+        ApplyImportSchema
+          .safeParse(
+            request.body
+          );
+
+      if (
+        !params.success ||
+        !body.success
+      ) {
+        return reply
+          .code(400)
+          .send({
+            error:
+              "invalid-request",
+
+            message:
+              "Save import apply request is invalid."
+          });
+      }
+
+      try {
+        return await importApply
+          .apply(
+            params.data
+              .operationId,
+
+            body.data
+              .targetSlotId,
+
+            body.data
+              .targetWorldId
+          );
       } catch (
         error
       ) {

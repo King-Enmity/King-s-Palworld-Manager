@@ -289,6 +289,26 @@ export interface SaveImportPreview {
     string[];
 }
 
+export interface SaveImportReadyOperation {
+  operationId:
+    string;
+
+  directory:
+    string;
+
+  dataPath:
+    string;
+
+  archivePath:
+    string;
+
+  preview:
+    SaveImportPreview;
+
+  manifest:
+    SaveImportManifest;
+}
+
 export class SaveImportError
   extends Error {
   public constructor(
@@ -769,6 +789,352 @@ export class SaveImportService {
         "Save import archive could not be validated.",
         400,
         "save-import-validation-failed"
+      );
+    }
+  }
+
+  public async ready(
+    operationId:
+      string
+  ): Promise<SaveImportReadyOperation> {
+    this.cleanupExpired();
+
+    if (
+      !UUID.test(
+        operationId
+      )
+    ) {
+      throw new SaveImportError(
+        "Save import operation ID is invalid.",
+        400,
+        "save-import-operation-invalid"
+      );
+    }
+
+    const directory =
+      path.join(
+        this.importRoot,
+        operationId
+      );
+
+    const previewPath =
+      path.join(
+        directory,
+        "preview.json"
+      );
+
+    const appliedPath =
+      path.join(
+        directory,
+        "applied.json"
+      );
+
+    const archivePath =
+      path.join(
+        directory,
+        "upload.tar.gz"
+      );
+
+    const extractPath =
+      path.join(
+        directory,
+        "staging"
+      );
+
+    if (
+      existsSync(
+        appliedPath
+      )
+    ) {
+      throw new SaveImportError(
+        "Save import operation has already been applied.",
+        409,
+        "save-import-already-applied"
+      );
+    }
+
+    let preview:
+      SaveImportPreview;
+
+    try {
+      const parsed:
+        unknown =
+          JSON.parse(
+            readFileSync(
+              previewPath,
+              "utf8"
+            )
+          );
+
+      if (
+        typeof parsed !==
+          "object" ||
+        parsed ===
+          null
+      ) {
+        throw new Error(
+          "invalid-preview"
+        );
+      }
+
+      const candidate =
+        parsed as
+          Partial<
+            SaveImportPreview
+          >;
+
+      if (
+        candidate.operationId !==
+          operationId ||
+        candidate.status !==
+          "ready" ||
+        typeof candidate.expiresAt !==
+          "string" ||
+        typeof candidate.archive !==
+          "object" ||
+        candidate.archive ===
+          null ||
+        typeof candidate.archive.sizeBytes !==
+          "number" ||
+        typeof candidate.archive.sha256 !==
+          "string"
+      ) {
+        throw new Error(
+          "invalid-preview"
+        );
+      }
+
+      preview =
+        candidate as
+          SaveImportPreview;
+    } catch {
+      throw new SaveImportError(
+        "Save import preview state could not be read.",
+        404,
+        "save-import-preview-not-found"
+      );
+    }
+
+    const expiresAt =
+      Date.parse(
+        preview.expiresAt
+      );
+
+    if (
+      Number.isNaN(
+        expiresAt
+      ) ||
+      expiresAt <=
+        Date.now()
+    ) {
+      this.discard(
+        operationId
+      );
+
+      throw new SaveImportError(
+        "Save import preview has expired.",
+        410,
+        "save-import-preview-expired"
+      );
+    }
+
+    let archiveStat:
+      Stats;
+
+    try {
+      archiveStat =
+        lstatSync(
+          archivePath
+        );
+    } catch {
+      throw new SaveImportError(
+        "Save import quarantine archive is missing.",
+        409,
+        "save-import-quarantine-missing"
+      );
+    }
+
+    if (
+      !archiveStat.isFile() ||
+      archiveStat.isSymbolicLink() ||
+      archiveStat.size !==
+        preview.archive
+          .sizeBytes
+    ) {
+      throw new SaveImportError(
+        "Save import quarantine archive changed after preview.",
+        409,
+        "save-import-quarantine-changed"
+      );
+    }
+
+    const archiveHash =
+      await this.hashFile(
+        archivePath
+      );
+
+    if (
+      archiveHash !==
+        preview.archive.sha256
+    ) {
+      throw new SaveImportError(
+        "Save import quarantine archive hash changed after preview.",
+        409,
+        "save-import-quarantine-changed"
+      );
+    }
+
+    const manifest =
+      this.readManifest(
+        extractPath
+      );
+
+    this.validateManifest(
+      manifest
+    );
+
+    const inspected =
+      await this.inspectArchive(
+        archivePath
+      );
+
+    await this.verifyExtracted(
+      extractPath,
+      inspected,
+      manifest
+    );
+
+    if (
+      preview.source.kind !==
+        manifest.kind ||
+      preview.source.slotId !==
+        manifest.source.slotId ||
+      preview.source.worldId !==
+        manifest.source.worldId ||
+      preview.source.playerId !==
+        (
+          manifest.source
+            .playerId ??
+          null
+        ) ||
+      preview.manifest.fileCount !==
+        manifest.summary.fileCount ||
+      preview.manifest.totalBytes !==
+        manifest.summary.totalBytes
+    ) {
+      throw new SaveImportError(
+        "Save import preview no longer matches its validated manifest.",
+        409,
+        "save-import-preview-changed"
+      );
+    }
+
+    return {
+      operationId,
+
+      directory,
+
+      dataPath:
+        path.join(
+          extractPath,
+          "data"
+        ),
+
+      archivePath,
+
+      preview,
+
+      manifest
+    };
+  }
+
+  public markApplied(
+    operationId:
+      string,
+
+    result:
+      Record<
+        string,
+        unknown
+      >
+  ): void {
+    if (
+      !UUID.test(
+        operationId
+      )
+    ) {
+      throw new SaveImportError(
+        "Save import operation ID is invalid.",
+        400,
+        "save-import-operation-invalid"
+      );
+    }
+
+    const directory =
+      path.join(
+        this.importRoot,
+        operationId
+      );
+
+    const previewPath =
+      path.join(
+        directory,
+        "preview.json"
+      );
+
+    const appliedPath =
+      path.join(
+        directory,
+        "applied.json"
+      );
+
+    if (
+      !existsSync(
+        previewPath
+      )
+    ) {
+      throw new SaveImportError(
+        "Save import preview was not found.",
+        404,
+        "save-import-preview-not-found"
+      );
+    }
+
+    if (
+      existsSync(
+        appliedPath
+      )
+    ) {
+      throw new SaveImportError(
+        "Save import operation has already been applied.",
+        409,
+        "save-import-already-applied"
+      );
+    }
+
+    try {
+      writeFileSync(
+        appliedPath,
+
+        JSON.stringify(
+          result,
+          null,
+          2
+        ) + "\n",
+
+        {
+          encoding:
+            "utf8",
+
+          flag:
+            "wx"
+        }
+      );
+    } catch {
+      throw new SaveImportError(
+        "Save import completion state could not be recorded.",
+        500,
+        "save-import-completion-write-failed"
       );
     }
   }
