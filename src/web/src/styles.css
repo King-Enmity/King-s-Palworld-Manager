@@ -4752,3 +4752,228 @@ td strong {
     justify-content: space-between;
   }
 }
+/* =========================================================
+   Settings metadata / grouping
+   ========================================================= */
+
+.settings-category-filter {
+  display: grid;
+  gap: 5px;
+  min-width: 170px;
+}
+
+.settings-category-filter > span {
+  color: #6f7e95;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.settings-category-filter select {
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid #29364e;
+  border-radius: 7px;
+  outline: none;
+  color: #cbd4e4;
+  background: #0d1625;
+  font: inherit;
+  font-size: 9px;
+}
+
+.settings-category-filter select:focus {
+  border-color: #566bd2;
+}
+
+.setting-title-block {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.setting-title-block > strong {
+  color: #d6deec;
+  font-size: 10px;
+}
+
+.setting-title-block > code {
+  overflow: hidden;
+  color: #65758d;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-category-chip {
+  display: inline-flex;
+  margin-right: 5px;
+  padding: 3px 5px;
+  border: 1px solid rgba(93, 116, 184, 0.18);
+  border-radius: 5px;
+  color: #899bd1;
+  background: rgba(64, 80, 137, 0.1);
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.setting-description {
+  display: block;
+  max-width: 720px;
+  margin-top: 5px;
+  color: #748298;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+@media (max-width: 800px) {
+  .settings-category-filter {
+    width: 100%;
+  }
+
+  .settings-category-filter select {
+    width: 100%;
+  }
+}
+/* =========================================================
+   Settings V1 operator controls
+   ========================================================= */
+
+.pending-filter {
+  white-space: nowrap;
+}
+
+.setting-value-strip {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.setting-value-cell {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #26334a;
+  border-radius: 7px;
+  background: rgba(9, 17, 29, 0.62);
+}
+
+.setting-value-cell > span,
+.setting-value-cell > strong {
+  display: block;
+}
+
+.setting-value-cell > span {
+  color: #59687f;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.setting-value-cell > strong {
+  overflow: hidden;
+  margin-top: 4px;
+  color: #aab6ca;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-proposed {
+  border-style: dashed;
+}
+
+.setting-proposed-active {
+  border-style: solid;
+  border-color: #596bc1;
+  background: rgba(72, 88, 166, 0.1);
+}
+
+.setting-proposed-active > span {
+  color: #8396e8;
+}
+
+.setting-proposed-active > strong {
+  color: #c8d2ff;
+}
+
+.setting-reset-button {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid #34445f;
+  border-radius: 6px;
+  color: #8998b0;
+  background: #121d30;
+  cursor: pointer;
+  font: inherit;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.setting-reset-button:hover:not(:disabled) {
+  border-color: #566b96;
+  color: #c5cee0;
+}
+
+.setting-reset-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.settings-safety-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 9px 0;
+  padding: 9px;
+  border: 1px solid rgba(64, 125, 104, 0.4);
+  border-radius: 7px;
+  color: #7fbc9f;
+  background: rgba(38, 100, 77, 0.09);
+}
+
+.settings-safety-note > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.settings-safety-note strong,
+.settings-safety-note span {
+  display: block;
+}
+
+.settings-safety-note strong {
+  color: #94ceb3;
+  font-size: 8px;
+}
+
+.settings-safety-note span {
+  margin-top: 3px;
+  color: #6d9c87;
+  font-size: 7px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .setting-value-strip {
+    grid-template-columns:
+      1fr;
+  }
+}

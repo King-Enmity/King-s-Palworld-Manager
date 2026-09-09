@@ -12,6 +12,18 @@ export type PalworldSettingOrigin =
   | "default"
   | "live-only";
 
+export type PalworldSettingCategory =
+  | "General"
+  | "World & Progression"
+  | "Pals"
+  | "Players"
+  | "Building & Bases"
+  | "Guilds & PvP"
+  | "Server & Network"
+  | "Admin & API"
+  | "Performance & Logging"
+  | "Advanced";
+
 export interface PalworldValidationIssue {
   code: string;
   message: string;
@@ -26,6 +38,15 @@ export interface PalworldSettingValidation {
 
 export interface PalworldSettingDescriptor {
   key: string;
+
+  label: string;
+
+  description:
+    string |
+    null;
+
+  category:
+    PalworldSettingCategory;
 
   type: PalworldSettingType;
   origin: PalworldSettingOrigin;

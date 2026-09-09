@@ -13,6 +13,10 @@ import {
 } from "./paths.js";
 
 import {
+  getPalworldSettingMetadata
+} from "./settings-catalog.js";
+
+import {
   parsePalworldSettings,
   type ParsedPalworldSettings,
   type PalworldSettingValue
@@ -172,6 +176,11 @@ export class PalworldSettingsService {
       const sensitive =
         isSensitiveSetting(key);
 
+      const metadata =
+        getPalworldSettingMetadata(
+          key
+        );
+
       const validation =
         currentValue !== undefined
           ? validateSetting(
@@ -208,6 +217,15 @@ export class PalworldSettingsService {
 
       descriptors.push({
         key,
+
+        label:
+          metadata.label,
+
+        description:
+          metadata.description,
+
+        category:
+          metadata.category,
 
         type,
 

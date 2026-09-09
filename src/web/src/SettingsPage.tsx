@@ -36,8 +36,29 @@ interface ValidationIssue {
   message: string;
 }
 
+type SettingCategory =
+  | "General"
+  | "World & Progression"
+  | "Pals"
+  | "Players"
+  | "Building & Bases"
+  | "Guilds & PvP"
+  | "Server & Network"
+  | "Admin & API"
+  | "Performance & Logging"
+  | "Advanced";
+
 interface SettingDescriptor {
   key: string;
+
+  label: string;
+
+  description:
+    string |
+    null;
+
+  category:
+    SettingCategory;
 
   type: SettingType;
 
@@ -312,6 +333,25 @@ export function SettingsPage() {
   ] =
     useState(
       false
+    );
+
+  const [
+    pendingOnly,
+    setPendingOnly
+  ] =
+    useState(
+      false
+    );
+
+  const [
+    category,
+    setCategory
+  ] =
+    useState<
+      "all" |
+      SettingCategory
+    >(
+      "all"
     );
 
   const [
@@ -738,6 +778,25 @@ export function SettingsPage() {
       const changes =
         buildChanges();
 
+      const approved =
+        window.confirm(
+          [
+            `Apply ${preview.changes.length} Palworld setting change${preview.changes.length === 1 ? "" : "s"}?`,
+            "",
+            "King's Palworld Manager will create a settings snapshot before replacing PalWorldSettings.ini.",
+            "",
+            preview.restartRequired
+              ? "Palworld must be restarted before these changes take effect."
+              : "No Palworld restart is currently required."
+          ].join(
+            "\n"
+          )
+        );
+
+      if (!approved) {
+        return;
+      }
+
       setBusy(
         "apply"
       );
@@ -846,6 +905,45 @@ export function SettingsPage() {
       );
     };
 
+  const resetDraft =
+    (
+      key:
+        string
+    ): void => {
+      setDrafts(
+        current => {
+          if (
+            !Object.prototype
+              .hasOwnProperty
+              .call(
+                current,
+                key
+              )
+          ) {
+            return current;
+          }
+
+          const next = {
+            ...current
+          };
+
+          delete next[
+            key
+          ];
+
+          return next;
+        }
+      );
+
+      setPreview(
+        null
+      );
+
+      setNotice(
+        null
+      );
+    };
+
   const filtered =
     useMemo(
       () => {
@@ -866,12 +964,51 @@ export function SettingsPage() {
               return false;
             }
 
+            if (
+              pendingOnly &&
+              !Object.prototype
+                .hasOwnProperty
+                .call(
+                  drafts,
+                  setting.key
+                )
+            ) {
+              return false;
+            }
+
+            if (
+              category !==
+                "all" &&
+              setting.category !==
+                category
+            ) {
+              return false;
+            }
+
             if (!query) {
               return true;
             }
 
             return (
               setting.key
+                .toLowerCase()
+                .includes(
+                  query
+                ) ||
+              setting.label
+                .toLowerCase()
+                .includes(
+                  query
+                ) ||
+              setting.category
+                .toLowerCase()
+                .includes(
+                  query
+                ) ||
+              (
+                setting.description ??
+                ""
+              )
                 .toLowerCase()
                 .includes(
                   query
@@ -888,7 +1025,45 @@ export function SettingsPage() {
       [
         snapshot,
         search,
-        modifiedOnly
+        modifiedOnly,
+        pendingOnly,
+        category,
+        drafts
+      ]
+    );
+
+  const categories =
+    useMemo(
+      () => {
+        const found =
+          new Set<
+            SettingCategory
+          >();
+
+        for (
+          const setting
+          of snapshot?.settings ??
+            []
+        ) {
+          found.add(
+            setting.category
+          );
+        }
+
+        return [
+          ...found
+        ].sort(
+          (
+            left,
+            right
+          ) =>
+            left.localeCompare(
+              right
+            )
+        );
+      },
+      [
+        snapshot
       ]
     );
 
@@ -1095,6 +1270,48 @@ export function SettingsPage() {
           />
         </label>
 
+        <label className="settings-category-filter">
+          <span>
+            Category
+          </span>
+
+          <select
+            onChange={
+              event =>
+                setCategory(
+                  event.target
+                    .value as
+                    "all" |
+                    SettingCategory
+                )
+            }
+            value={
+              category
+            }
+          >
+            <option value="all">
+              All categories
+            </option>
+
+            {
+              categories.map(
+                item => (
+                  <option
+                    key={
+                      item
+                    }
+                    value={
+                      item
+                    }
+                  >
+                    {item}
+                  </option>
+                )
+              )
+            }
+          </select>
+        </label>
+
         <label className="modified-filter">
           <Filter size={14} />
 
@@ -1110,6 +1327,26 @@ export function SettingsPage() {
           />
 
           Modified only
+        </label>
+
+        <label className="modified-filter pending-filter">
+          <Filter size={14} />
+
+          <input
+            checked={
+              pendingOnly
+            }
+            onChange={
+              event =>
+                setPendingOnly(
+                  event.target
+                    .checked
+                )
+            }
+            type="checkbox"
+          />
+
+          Pending edits only
         </label>
 
         <div className="settings-toolbar-actions">
@@ -1180,6 +1417,14 @@ export function SettingsPage() {
                       setting.key
                     ];
 
+                  const hasDraft =
+                    Object.prototype
+                      .hasOwnProperty
+                      .call(
+                        drafts,
+                        setting.key
+                      );
+
                   return (
                     <div
                       className={
@@ -1194,11 +1439,19 @@ export function SettingsPage() {
                     >
                       <div className="setting-info">
                         <div className="setting-name-line">
-                          <strong>
-                            {
-                              setting.key
-                            }
-                          </strong>
+                          <div className="setting-title-block">
+                            <strong>
+                              {
+                                setting.label
+                              }
+                            </strong>
+
+                            <code>
+                              {
+                                setting.key
+                              }
+                            </code>
+                          </div>
 
                           {
                             setting.modified
@@ -1232,6 +1485,12 @@ export function SettingsPage() {
                         </div>
 
                         <span className="setting-meta">
+                          <span className="setting-category-chip">
+                            {
+                              setting.category
+                            }
+                          </span>
+
                           {setting.type}
                           {" · "}
                           {
@@ -1242,15 +1501,77 @@ export function SettingsPage() {
                           }
                         </span>
 
-                        <span className="setting-default">
-                          Default: {
-                            publicValue(
-                              setting.defaultValue,
-                              setting.sensitive,
-                              false
-                            )
-                          }
-                        </span>
+                        {
+                          setting.description
+                            ? (
+                                <span className="setting-description">
+                                  {
+                                    setting.description
+                                  }
+                                </span>
+                              )
+                            : null
+                        }
+
+                        <div className="setting-value-strip">
+                          <div className="setting-value-cell">
+                            <span>
+                              Current
+                            </span>
+
+                            <strong>
+                              {
+                                publicValue(
+                                  setting.currentValue,
+                                  setting.sensitive,
+                                  setting.secretConfigured
+                                )
+                              }
+                            </strong>
+                          </div>
+
+                          <div className="setting-value-cell">
+                            <span>
+                              Default
+                            </span>
+
+                            <strong>
+                              {
+                                setting.sensitive
+                                  ? "Hidden"
+                                  : publicValue(
+                                      setting.defaultValue,
+                                      false,
+                                      false
+                                    )
+                              }
+                            </strong>
+                          </div>
+
+                          <div
+                            className={
+                              hasDraft
+                                ? "setting-value-cell setting-proposed setting-proposed-active"
+                                : "setting-value-cell setting-proposed"
+                            }
+                          >
+                            <span>
+                              Proposed
+                            </span>
+
+                            <strong>
+                              {
+                                hasDraft
+                                  ? setting.sensitive
+                                    ? "Secret replacement"
+                                    : String(
+                                        draft
+                                      )
+                                  : "No pending edit"
+                              }
+                            </strong>
+                          </div>
+                        </div>
 
                         {
                           setting.validation
@@ -1381,6 +1702,32 @@ export function SettingsPage() {
                         }
 
                         {
+                          hasDraft
+                            ? (
+                                <button
+                                  className="setting-reset-button"
+                                  disabled={
+                                    busy !==
+                                      null
+                                  }
+                                  onClick={() => {
+                                    resetDraft(
+                                      setting.key
+                                    );
+                                  }}
+                                  type="button"
+                                >
+                                  <RotateCcw
+                                    size={12}
+                                  />
+
+                                  Reset this edit
+                                </button>
+                              )
+                            : null
+                        }
+
+                        {
                           setting.sensitive
                             ? (
                                 <span className="secret-state">
@@ -1481,6 +1828,32 @@ export function SettingsPage() {
                               <RefreshCw size={14} />
 
                               Palworld restart required after apply.
+                            </div>
+                          )
+                        : null
+                    }
+
+                    {
+                      preview.valid &&
+                      preview.changed
+                        ? (
+                            <div className="settings-safety-note">
+                              <ShieldCheck
+                                size={14}
+                              />
+
+                              <div>
+                                <strong>
+                                  Safe replacement enabled
+                                </strong>
+
+                                <span>
+                                  A snapshot of the current PalWorldSettings.ini
+                                  is created before the atomic replacement. If
+                                  the write cannot be verified, the previous
+                                  settings file is restored.
+                                </span>
+                              </div>
                             </div>
                           )
                         : null
