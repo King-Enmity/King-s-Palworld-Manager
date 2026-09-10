@@ -1,0 +1,50 @@
+services:
+  kings-palworld-manager:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+
+    image: kings-palworld-manager:v1-dev
+
+    container_name: kings-palworld-manager
+
+    restart: unless-stopped
+
+    stop_grace_period: 90s
+
+    environment:
+      KPM_BIND_ADDRESS: "0.0.0.0"
+      KPM_HTTP_PORT: "8080"
+
+      KPM_WEB_ROOT: "/app/web"
+
+      KPM_DATA_PATH: "/manager/data"
+      KPM_DB_FILENAME: "kpm.db"
+
+      KPM_PALWORLD_ROOT: "/pal/Package"
+
+      KPM_PALWORLD_GAME_PORT: "8211"
+      KPM_PALWORLD_QUERY_PORT: "27015"
+
+      KPM_PALWORLD_REST_PORT: "8212"
+      KPM_PALWORLD_REST_USERNAME: "admin"
+      KPM_PALWORLD_REST_TIMEOUT_MS: "5000"
+      KPM_PALWORLD_REST_SHUTDOWN_WAIT_SECONDS: "1"
+
+      KPM_PALWORLD_STOP_TIMEOUT_MS: "30000"
+
+      KPM_STEAM_UPDATE_ON_START: "1"
+
+    ports:
+      - "8080:8080/tcp"
+      - "8211:8211/udp"
+      - "27015:27015/udp"
+
+    volumes:
+      - kpm_manager_data:/manager/data
+      - kpm_palworld_data:/pal
+
+
+volumes:
+  kpm_manager_data:
+  kpm_palworld_data:

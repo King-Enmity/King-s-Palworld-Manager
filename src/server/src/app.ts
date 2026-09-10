@@ -1,4 +1,9 @@
 import fastifyMultipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
+
+import {
+  existsSync
+} from "node:fs";
 
 import Fastify from "fastify";
 import { z } from "zod";
@@ -241,6 +246,31 @@ export function buildApp(
       }
     }
   );
+
+  if (
+    dependencies.config
+      .webRoot &&
+    existsSync(
+      dependencies.config
+        .webRoot
+    )
+  ) {
+    app.register(
+      fastifyStatic,
+      {
+        root:
+          dependencies.config
+            .webRoot,
+
+        prefix:
+          "/",
+
+        index: [
+          "index.html"
+        ]
+      }
+    );
+  }
 
   app.get(
     "/health",

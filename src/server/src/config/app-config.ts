@@ -21,6 +21,11 @@ const EnvironmentSchema = z.object({
       .min(1)
       .optional(),
 
+  KPM_WEB_ROOT:
+    z.string()
+      .min(1)
+      .optional(),
+
   KPM_DB_FILENAME:
     z.string()
       .regex(/^[A-Za-z0-9._-]+$/)
@@ -92,6 +97,8 @@ export interface AppConfig {
   dataPath: string;
   databasePath: string;
 
+  webRoot: string | null;
+
   palworldRoot: string | null;
 
   palworldGamePort: number;
@@ -137,6 +144,13 @@ export function loadAppConfig(
         dataPath,
         parsed.KPM_DB_FILENAME
       ),
+
+    webRoot:
+      parsed.KPM_WEB_ROOT
+        ? path.resolve(
+            parsed.KPM_WEB_ROOT
+          )
+        : null,
 
     palworldRoot:
       parsed.KPM_PALWORLD_ROOT
